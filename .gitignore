@@ -1,0 +1,34 @@
+cd D:\FYP
+```
+
+Create a file `D:\FYP\.gitignore` and paste:
+```
+# Python / Django
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+db.sqlite3
+*.log
+attendance_system/staticfiles/
+
+# Flutter
+attendance_app/.dart_tool/
+attendance_app/build/
+attendance_app/.flutter-plugins
+attendance_app/.flutter-plugins-dependencies
+attendance_app/.packages
+attendance_app/pubspec.lock
+
+# Android
+attendance_app/android/.gradle/
+attendance_app/android/local.properties
+attendance_app/android/key.properties
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db
+Desktop.ini
