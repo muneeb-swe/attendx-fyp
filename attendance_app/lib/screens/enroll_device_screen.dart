@@ -23,16 +23,7 @@ class _EnrollDeviceScreenState extends State<EnrollDeviceScreen> {
     });
 
     try {
-      // Step 1: Check if already enrolled
-      final statusResult = await ApiService.getDeviceStatus();
-      if (statusResult['data']['enrolled'] == true) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage =
-              'Device already enrolled. Contact admin to replace.';
-        });
-        return;
-      }
+      /// Allow re-enrollment — server handles hardware ID check
 
       setState(() {
         _statusMessage = 'Getting device info...';

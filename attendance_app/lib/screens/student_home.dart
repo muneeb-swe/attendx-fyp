@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import '../services/crypto_service.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -15,13 +16,22 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   String _department = '';
   bool _deviceEnrolled = false;
   bool _isLoading = true;
+  bool _keystoreKeyExists = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserInfo();
     _checkDeviceStatus();
+    _checkKeystoreKey();
   }
+
+  Future<void> _checkKeystoreKey() async {
+  final hasKey = await CryptoService.hasKeys();
+  setState(() {
+    _keystoreKeyExists = hasKey;
+  });
+}
 
   Future<void> _loadUserInfo() async {
     final prefs = await SharedPreferences.getInstance();
@@ -267,16 +277,25 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     // Enroll device button
                     _buildActionCard(
                       icon: Icons.phone_android,
-                      title: _deviceEnrolled
-                          ? 'Device Enrolled ✓'
-                          : 'Enroll Device',
-                      subtitle: _deviceEnrolled
-                          ? 'Your device is registered'
-                          : 'Register your phone for attendance',
+                      title: (!_keystoreKeyExists && _deviceEnrolled)
+                      ? 'Re-enroll Device'
+                      : _deviceEnrolled
+                        ? 'Device Enrolled ✓'
+                        : 'Enroll Device',
+                  subtitle: (!_keystoreKeyExists && _deviceEnrolled)
+                      ? 'Reinstalled app? Re-register your device'
+                      : _deviceEnrolled
+                        ? 'Your device is registered'
+                        : 'Register your phone for attendance',
                       color: _deviceEnrolled
                           ? const Color(0xFF8A8A9A)
                           : const Color(0xFFFF5C38),
-                      onTap: _deviceEnrolled
+                      onTap: (!_keystoreKeyExists && _deviceEnrolled)
+                      ? () async {
+                          await Navigator.pushNamed(context, '/enroll_device');
+                          _checkDeviceStatus();
+                        }
+                      : _deviceEnrolled
                         ? null
                         : () async {
                             await Navigator.pushNamed(context, '/enroll_device');

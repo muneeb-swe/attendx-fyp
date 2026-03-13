@@ -118,14 +118,14 @@ class DeviceEnrollView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Validate public key format (PEM or DER)
         public_key_str = request.data.get('public_key', '')
+        device_fingerprint = request.data.get('device_fingerprint', '')
+
+        # Validate public key format (PEM or DER)
         try:
             if public_key_str.startswith('-----'):
-                # PEM format
                 load_pem_public_key(public_key_str.encode())
             else:
-                # DER format (Base64) from Android Keystore
                 der_bytes = base64.b64decode(public_key_str)
                 load_der_public_key(der_bytes)
         except Exception:
@@ -134,6 +134,26 @@ class DeviceEnrollView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Check if student already has a device enrolled
+        existing_device = Device.objects.filter(student=student).first()
+
+        if existing_device:
+            # Re-enrollment: check hardware ID matches
+            if existing_device.device_fingerprint != device_fingerprint:
+                return Response(
+                    {'error': 'This account is registered to a different device. Contact admin.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            # Same device → update public key
+            existing_device.public_key = public_key_str
+            existing_device.save()
+            return Response({
+                'message': 'Device re-enrolled successfully',
+                'device_fingerprint': existing_device.device_fingerprint,
+                'enrolled_at': existing_device.registered_at,
+            }, status=status.HTTP_201_CREATED)
+
+        # First enrollment → create new device
         serializer = DeviceEnrollSerializer(
             data=request.data,
             context={'student': student}
