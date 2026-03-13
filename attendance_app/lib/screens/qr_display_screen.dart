@@ -17,6 +17,7 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
   int _countdown = 15;
   bool _isLoading = true;
   bool _sessionStarted = false;
+  bool _isRefreshing = false;
   String _errorMessage = '';
   Timer? _countdownTimer;
   Timer? _attendanceTimer;
@@ -73,18 +74,23 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
     }
   }
 
-  void _startTimers() {
-    // Countdown timer
+  void _startCountdownTimer() {
+    _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
-      _countdown--;
+      if (_isRefreshing) return; // pause during refresh
+      if (_countdown <= 0) return; // prevent going negative
+      setState(() {
+        _countdown--;
+      });
       if (_countdown <= 0) {
         _refreshQR();
-      } else {
-        // Only update countdown — not QR image
-        setState(() {});
       }
     });
+  }
+
+  void _startTimers() {
+    _startCountdownTimer();
 
     // Check attendance every 5 seconds
     _attendanceTimer =
@@ -98,10 +104,13 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
   }
 
   Future<void> _refreshQR() async {
+    if (_isRefreshing) return; // prevent double refresh
+    _isRefreshing = true;
+    _countdownTimer?.cancel(); // stop timer during network call
+
     try {
       final result = await ApiService.refreshQR(_sessionId);
       if (result['status'] == 200 && mounted) {
-        // Update QR image and reset countdown atomically
         _qrImage = result['data']['qr_image'];
         _countdown = 15;
         setState(() {});
@@ -111,6 +120,11 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
         _countdown = 15;
         setState(() {});
       }
+    }
+
+    _isRefreshing = false;
+    if (mounted) {
+      _startCountdownTimer(); // restart timer after refresh done
     }
   }
 
@@ -153,7 +167,6 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
 
     if (confirm != true) return;
 
-    // Cancel timers and show loading
     _countdownTimer?.cancel();
     _attendanceTimer?.cancel();
     setState(() {
@@ -260,13 +273,11 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
                 )
               : Column(
                   children: [
-                    // Scrollable content
                     Expanded(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.all(24),
                         child: Column(
                           children: [
-                            // Subject
                             Text(
                               _classInfo?['subject'] ?? '',
                               style: const TextStyle(
@@ -276,8 +287,6 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
                             ),
                             const SizedBox(height: 24),
 
-                            // QR Code — wrapped in RepaintBoundary
-                            // to prevent unnecessary redraws
                             RepaintBoundary(
                               child: Container(
                                 padding: const EdgeInsets.all(16),
@@ -310,35 +319,36 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
 
                             const SizedBox(height: 20),
 
-                            // Countdown
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Text(
-                                  'Refreshing in ',
-                                  style: TextStyle(
+                                Text(
+                                  _isRefreshing
+                                      ? 'Refreshing QR...'
+                                      : 'Refreshing in ',
+                                  style: const TextStyle(
                                     color: Color(0xFF8A8A9A),
                                     fontSize: 14,
                                   ),
                                 ),
-                                Text(
-                                  '$_countdown seconds',
-                                  style: TextStyle(
-                                    color: _countdown <= 5
-                                        ? const Color(0xFFFF5C38)
-                                        : const Color(0xFF00C896),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
+                                if (!_isRefreshing)
+                                  Text(
+                                    '$_countdown seconds',
+                                    style: TextStyle(
+                                      color: _countdown <= 5
+                                          ? const Color(0xFFFF5C38)
+                                          : const Color(0xFF00C896),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
-                                ),
                               ],
                             ),
 
                             const SizedBox(height: 8),
 
-                            // Progress bar
                             LinearProgressIndicator(
-                              value: _countdown / 15,
+                              value: _isRefreshing ? null : _countdown / 15,
                               backgroundColor: const Color(0xFFE0DDD5),
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 _countdown <= 5
@@ -349,7 +359,6 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
 
                             const SizedBox(height: 24),
 
-                            // Instructions
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(16),
@@ -380,7 +389,6 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
                       ),
                     ),
 
-                    // Stop button — fixed at bottom
                     Padding(
                       padding: const EdgeInsets.all(24),
                       child: SizedBox(
