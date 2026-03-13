@@ -4,7 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
   // Change this to your Django server IP
-  static const String baseUrl = 'http://192.168.1.13:8000/api';
+  static const String baseUrl = 'http://MuneebOfficial-52165.portmap.host:52165/api';
   static const FlutterSecureStorage storage = FlutterSecureStorage();
 
   // Save token after login
