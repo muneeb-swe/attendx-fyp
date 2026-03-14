@@ -25,6 +25,7 @@ class Session(models.Model):
     class_ref = models.ForeignKey(Class, on_delete=models.CASCADE)
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
     qr_token = models.CharField(max_length=255, unique=True)
+    previous_qr_token = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     is_active = models.BooleanField(default=True)

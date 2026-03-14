@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, datetime
 import uuid
 import qrcode
 import base64
@@ -126,6 +126,7 @@ class RefreshQRView(APIView):
 
         # Generate new token — reset 15 second timer
         new_token = str(uuid.uuid4())
+        session.previous_qr_token = session.qr_token  # save old token
         session.qr_token = new_token
         session.expires_at = timezone.now() + timedelta(seconds=15)
         session.save()
@@ -335,6 +336,7 @@ class MarkAttendanceView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        print("DEBUG data:", request.data)
         # Step 1: Only students can mark attendance
         if request.user.role != 'student':
             return Response(
@@ -364,8 +366,9 @@ class MarkAttendanceView(APIView):
         session_id = request.data.get('session_id')
         qr_token = request.data.get('qr_token')
         signature = request.data.get('signature')
+        scan_timestamp = request.data.get('scan_timestamp')
 
-        if not all([session_id, qr_token, signature]):
+        if not all([session_id, qr_token, signature, scan_timestamp]):
             return Response(
                 {'error': 'session_id, qr_token and signature are required'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -388,16 +391,17 @@ class MarkAttendanceView(APIView):
             )
 
         # Step 7: Check QR token is valid
-        if session.qr_token != qr_token:
+        if session.qr_token != qr_token and session.previous_qr_token != qr_token:
             return Response(
                 {'error': 'Invalid QR code. Please scan the latest QR.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Step 8: Check QR not expired
-        if timezone.now() > session.expires_at:
+        # Step 8: Check QR not expired at SCAN TIME (not submission time)
+        scan_time = datetime.fromtimestamp(scan_timestamp / 1000, tz=pytz.UTC)
+        if scan_time > session.expires_at:
             return Response(
-                {'error': 'QR code has expired. Please scan the new QR.'},
+                {'error': 'QR code had already expired when you scanned it.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

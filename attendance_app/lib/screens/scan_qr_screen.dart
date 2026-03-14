@@ -36,6 +36,7 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
     if (barcode.rawValue == null) return;
 
     final qrData = barcode.rawValue!;
+    final scanTimestamp = DateTime.now().millisecondsSinceEpoch;
 
     // QR format: session_id:qr_token
     final parts = qrData.split(':');
@@ -108,10 +109,11 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
     // Step 3: Send to server
     try {
       final result = await ApiService.markAttendance(
-        sessionId: sessionId,
-        qrToken: qrToken,
-        signature: signature,
-      );
+      sessionId: sessionId,
+      qrToken: qrToken,
+      signature: signature,
+      scanTimestamp: scanTimestamp,
+    );
 
       if (result['status'] == 201) {
         setState(() {

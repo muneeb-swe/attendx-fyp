@@ -163,26 +163,28 @@ class ApiService {
 
   // MARK ATTENDANCE (student)
   static Future<Map<String, dynamic>> markAttendance({
-    required int sessionId,
-    required String qrToken,
-    required String signature,
-  }) async {
-    final headers = await getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/attendance/mark/'),
-      headers: headers,
-      body: jsonEncode({
-        'session_id': sessionId,
-        'qr_token': qrToken,
-        'signature': signature,
-      }),
-    );
+  required int sessionId,
+  required String qrToken,
+  required String signature,
+  required int scanTimestamp,
+}) async {
+  final headers = await getHeaders();
+  final response = await http.post(
+    Uri.parse('$baseUrl/attendance/mark/'),
+    headers: headers,
+    body: jsonEncode({
+      'session_id': sessionId,
+      'qr_token': qrToken,
+      'signature': signature,
+      'scan_timestamp': scanTimestamp,
+    }),
+  );
 
-    return {
-      'status': response.statusCode,
-      'data': jsonDecode(response.body),
-    };
-  }
+  return {
+    'status': response.statusCode,
+    'data': jsonDecode(response.body),
+  };
+}
 
   // SUBMIT ATTENDANCE (teacher)
   static Future<Map<String, dynamic>> submitAttendance(
