@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -71,13 +73,36 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(milliseconds: 200));
     await _subtitleController.forward();
 
-    // Wait then navigate to login
+    // Wait then check auto-login
     await Future.delayed(const Duration(milliseconds: 1000));
 
     if (mounted) {
-      Navigator.pushReplacementNamed(context, '/login');
+      await _checkAutoLogin();
     }
   }
+
+Future<void> _checkAutoLogin() async {
+  final token = await ApiService.getToken();
+  
+  if (token == null || !mounted) {
+    Navigator.pushReplacementNamed(context, '/login');
+    return;
+  }
+
+  // Token exists → check role and navigate to home
+  final prefs = await SharedPreferences.getInstance();
+  final role = prefs.getString('role') ?? '';
+
+  if (!mounted) return;
+
+  if (role == 'teacher') {
+    Navigator.pushReplacementNamed(context, '/teacher_home');
+  } else if (role == 'student') {
+    Navigator.pushReplacementNamed(context, '/student_home');
+  } else {
+    Navigator.pushReplacementNamed(context, '/login');
+  }
+}
 
   @override
   void dispose() {
