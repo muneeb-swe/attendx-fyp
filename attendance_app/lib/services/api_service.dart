@@ -260,4 +260,17 @@ class ApiService {
       'data': jsonDecode(response.body),
     };
   }
+
+  static Future<Map<String, dynamic>> discardSession(int sessionId) async {
+  final headers = await getHeaders();
+  final response = await http.delete(
+    Uri.parse('$baseUrl/attendance/session/$sessionId/discard/'),
+    headers: headers,
+  );
+
+  return {
+    'status': response.statusCode,
+    'data': jsonDecode(response.body),
+  };
+}
 }

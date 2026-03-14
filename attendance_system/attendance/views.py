@@ -68,10 +68,14 @@ class GenerateQRView(APIView):
             )
 
         # Close any existing active session
-        Session.objects.filter(
-            class_ref=class_obj,
-            is_active=True
-        ).update(is_active=False)
+        # Discard any unsubmitted sessions for this teacher
+        stale_sessions = Session.objects.filter(
+            teacher=teacher,
+            is_submitted=False
+        )
+        for session in stale_sessions:
+            AttendanceRecord.objects.filter(session=session).delete()
+            session.delete()
 
         # Generate token — 15 seconds expiry
         qr_token = str(uuid.uuid4())
@@ -185,12 +189,13 @@ class StopSessionView(APIView):
         for student_id in absent_students:
             student = Student.objects.get(id=student_id)
             AttendanceRecord.objects.create(
-                session=session,
-                student=student,
-                device=None,
-                status='absent',
-                signature=''
-            )
+            session=session,
+            student=student,
+            device=None,
+            status='absent',
+            original_status='absent',
+            signature=''
+        )
 
         return Response({
             'message': 'Session stopped successfully',
@@ -282,6 +287,7 @@ class EditAttendanceView(APIView):
 
         # Save as manual override
         record.status = new_status
+        record.is_modified = new_status != record.original_status
         record.save()
 
         return Response({
@@ -336,7 +342,6 @@ class MarkAttendanceView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        print("DEBUG data:", request.data)
         # Step 1: Only students can mark attendance
         if request.user.role != 'student':
             return Response(
@@ -470,12 +475,13 @@ class MarkAttendanceView(APIView):
 
         # Step 12: All checks passed — mark attendance
         record = AttendanceRecord.objects.create(
-            session=session,
-            student=student,
-            device=device,
-            status='present',
-            signature=signature
-        )
+        session=session,
+        student=student,
+        device=device,
+        status='present',
+        original_status='present',
+        signature=signature
+    )
 
         return Response({
             'message': 'Attendance marked successfully',
@@ -539,18 +545,56 @@ class StudentAttendanceHistoryView(APIView):
             'session__class_ref'
         ).order_by('-timestamp')
 
-        data = [
-            {
+        data = []
+        for record in records:
+            if not record.session.is_submitted:
+                display_status = 'pending'
+            elif record.is_modified:
+                display_status = f'{record.status} (modified)'
+            else:
+                display_status = record.status
+
+            data.append({
                 'id': record.id,
                 'class_name': record.session.class_ref.name,
                 'subject': record.session.class_ref.subject,
-                'status': record.status,
+                'status': display_status,
                 'timestamp': format_timestamp(record.timestamp),
-            }
-            for record in records
-        ]
+            })
 
         return Response({
             'records': data,
             'total': len(data),
         })
+    
+class DiscardSessionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, session_id):
+        if request.user.role != 'teacher':
+            return Response(
+                {'error': 'Only teachers can discard sessions'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            teacher = Teacher.objects.get(user=request.user)
+            session = Session.objects.get(
+                id=session_id,
+                teacher=teacher,
+                is_submitted=False
+            )
+        except (Teacher.DoesNotExist, Session.DoesNotExist):
+            return Response(
+                {'error': 'Session not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Delete all attendance records for this session
+        AttendanceRecord.objects.filter(session=session).delete()
+        # Delete the session itself
+        session.delete()
+
+        return Response({
+            'message': 'Session discarded successfully',
+        }, status=status.HTTP_200_OK)

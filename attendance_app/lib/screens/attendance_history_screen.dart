@@ -50,10 +50,8 @@ class _AttendanceHistoryScreenState
 
   @override
   Widget build(BuildContext context) {
-    final totalPresent =
-        _records.where((r) => r['status'] == 'present').length;
-    final totalAbsent =
-        _records.where((r) => r['status'] == 'absent').length;
+    final totalPresent = _records.where((r) => (r['status'] as String).contains('present')).length;
+    final totalAbsent = _records.where((r) => (r['status'] as String).contains('absent')).length;
     final percentage = _records.isEmpty
         ? 0.0
         : (totalPresent / _records.length) * 100;
@@ -219,8 +217,9 @@ class _AttendanceHistoryScreenState
                               itemCount: _records.length,
                               itemBuilder: (context, index) {
                                 final record = _records[index];
-                                final isPresent =
-                                    record['status'] == 'present';
+                                final status = record['status'] as String;
+                                final isPending = status == 'pending';
+                                final isPresent = status == 'present' || status == 'present (modified)';
 
                                 return Container(
                                   margin: const EdgeInsets.only(
@@ -231,10 +230,11 @@ class _AttendanceHistoryScreenState
                                     borderRadius:
                                         BorderRadius.circular(4),
                                     border: Border.all(
-                                      color: isPresent
-                                          ? const Color(0xFF00C896)
-                                              .withOpacity(0.3)
-                                          : const Color(0xFFE0DDD5),
+                                      color: isPending
+                                    ? const Color(0xFFFFAA00).withOpacity(0.1)
+                                    : isPresent
+                                      ? const Color(0xFF00C896).withOpacity(0.1)
+                                      : const Color(0xFFFF5C38).withOpacity(0.1),
                                     ),
                                   ),
                                   child: Row(
@@ -244,21 +244,20 @@ class _AttendanceHistoryScreenState
                                         width: 36,
                                         height: 36,
                                         decoration: BoxDecoration(
-                                          color: isPresent
-                                              ? const Color(0xFF00C896)
-                                                  .withOpacity(0.1)
-                                              : const Color(0xFFFF5C38)
-                                                  .withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(4),
+                                          color: isPending
+                                              ? const Color(0xFFFFAA00).withOpacity(0.1)
+                                              : isPresent
+                                                ? const Color(0xFF00C896).withOpacity(0.1)
+                                                : const Color(0xFFFF5C38).withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: Icon(
-                                          isPresent
-                                              ? Icons.check
-                                              : Icons.close,
-                                          color: isPresent
-                                              ? const Color(0xFF00C896)
-                                              : const Color(0xFFFF5C38),
+                                          isPending ? Icons.hourglass_empty : isPresent ? Icons.check : Icons.close,
+                                          color: isPending
+                                              ? const Color(0xFFFFAA00)
+                                              : isPresent
+                                                ? const Color(0xFF00C896)
+                                                : const Color(0xFFFF5C38),
                                           size: 18,
                                         ),
                                       ),
@@ -307,36 +306,37 @@ class _AttendanceHistoryScreenState
 
                                       // Status badge
                                       Container(
-                                        padding:
-                                            const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 4),
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        width: 90,
                                         decoration: BoxDecoration(
-                                          color: isPresent
-                                              ? const Color(0xFF00C896)
-                                                  .withOpacity(0.1)
-                                              : const Color(0xFFFF5C38)
-                                                  .withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(2),
+                                          color: isPending
+                                              ? const Color(0xFFFFAA00).withOpacity(0.1)
+                                              : isPresent
+                                                ? const Color(0xFF00C896).withOpacity(0.1)
+                                                : const Color(0xFFFF5C38).withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(2),
                                           border: Border.all(
-                                            color: isPresent
-                                                ? const Color(
-                                                    0xFF00C896)
-                                                : const Color(
-                                                    0xFFFF5C38),
+                                            color: isPending
+                                                ? const Color(0xFFFFAA00)
+                                                : isPresent
+                                                  ? const Color(0xFF00C896)
+                                                  : const Color(0xFFFF5C38),
                                           ),
                                         ),
                                         child: Text(
-                                          isPresent
-                                              ? 'PRESENT'
-                                              : 'ABSENT',
+                                          isPending
+                                              ? 'PENDING'
+                                              : status.contains('modified')
+                                                ? status.toUpperCase()
+                                                : isPresent ? 'PRESENT' : 'ABSENT',
+                                          maxLines: 2,
+                                          textAlign: TextAlign.center,
                                           style: TextStyle(
-                                            color: isPresent
-                                                ? const Color(
-                                                    0xFF00C896)
-                                                : const Color(
-                                                    0xFFFF5C38),
+                                            color: isPending
+                                                ? const Color(0xFFFFAA00)
+                                                : isPresent
+                                                  ? const Color(0xFF00C896)
+                                                  : const Color(0xFFFF5C38),
                                             fontSize: 10,
                                             fontWeight: FontWeight.w700,
                                           ),

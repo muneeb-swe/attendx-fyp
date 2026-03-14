@@ -141,18 +141,52 @@ class _AttendanceReviewScreenState extends State<AttendanceReviewScreen> {
   int get _totalAbsent =>
       _students.where((s) => s['status'] == 'absent').length;
 
+  Future<void> _confirmDiscard() async {
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Discard Session?'),
+      content: const Text(
+          'Going back will discard this session and all attendance records will be lost.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Stay'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFF5C38),
+          ),
+          child: const Text('Discard',
+              style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm == true && mounted) {
+    await ApiService.discardSession(_sessionId);
+    Navigator.pushReplacementNamed(context, '/teacher_home');
+  }
+}
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+    onWillPop: () async {
+      await _confirmDiscard();
+      return false;
+    },
+    child: Scaffold(
       backgroundColor: const Color(0xFFF5F2EB),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF5F2EB),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF0A0A0F)),
-          onPressed: () =>
-              Navigator.pushReplacementNamed(context, '/teacher_home'),
-        ),
+        icon: const Icon(Icons.arrow_back, color: Color(0xFF0A0A0F)),
+        onPressed: _confirmDiscard,
+      ),
         title: Text(
           _classInfo?['name'] ?? 'Review Attendance',
           style: const TextStyle(
@@ -399,6 +433,7 @@ class _AttendanceReviewScreenState extends State<AttendanceReviewScreen> {
                     ),
                   ],
                 ),
+    )
     );
   }
 

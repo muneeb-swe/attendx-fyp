@@ -199,23 +199,63 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
   }
 
   @override
-  void dispose() {
+void dispose() {
+  _countdownTimer?.cancel();
+  _attendanceTimer?.cancel();
+  super.dispose();
+}
+
+Future<bool> _onWillPop() async {
+  if (!_sessionStarted) return true;
+
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Discard Session?'),
+      content: const Text(
+          'Going back will discard this session and all attendance records will be lost.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Stay'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFF5C38),
+          ),
+          child: const Text('Discard',
+              style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm == true) {
     _countdownTimer?.cancel();
     _attendanceTimer?.cancel();
-    super.dispose();
+    await ApiService.discardSession(_sessionId);
+    return true;
   }
+  return false;
+}
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+    onWillPop: _onWillPop,
+    child: Scaffold(
       backgroundColor: const Color(0xFFF5F2EB),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF5F2EB),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF0A0A0F)),
-          onPressed: () => Navigator.pop(context),
-        ),
+        icon: const Icon(Icons.arrow_back, color: Color(0xFF0A0A0F)),
+        onPressed: () async {
+          final shouldPop = await _onWillPop();
+          if (shouldPop && mounted) Navigator.pop(context);
+        },
+      ),
         title: Text(
           _classInfo?['name'] ?? 'Attendance',
           style: const TextStyle(
@@ -416,6 +456,7 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
                     ),
                   ],
                 ),
+    )
     );
   }
 }

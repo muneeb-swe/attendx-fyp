@@ -9,6 +9,7 @@ from .views import (
     MarkAttendanceView,
     TeacherClassesView,
     StudentAttendanceHistoryView,
+    DiscardSessionView,
 )
 
 urlpatterns = [
@@ -21,4 +22,5 @@ urlpatterns = [
     path('mark/', MarkAttendanceView.as_view(), name='mark-attendance'),
     path('teacher/classes/', TeacherClassesView.as_view(), name='teacher-classes'),
     path('student/history/', StudentAttendanceHistoryView.as_view(), name='student-history'),
+    path('session/<int:session_id>/discard/', DiscardSessionView.as_view(), name='discard-session'),
 ]

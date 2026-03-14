@@ -48,6 +48,8 @@ class AttendanceRecord(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=10, choices=STATUS, default='present')
     signature = models.TextField(blank=True)
+    original_status = models.CharField(max_length=10, choices=STATUS, default='present')
+    is_modified = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('session', 'student')
