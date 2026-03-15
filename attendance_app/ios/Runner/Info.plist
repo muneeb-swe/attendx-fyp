@@ -66,5 +66,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera is used to scan QR codes for attendance</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Face ID is used to verify your identity for attendance</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Network access is required to communicate with the server</string>
 </dict>
 </plist>
