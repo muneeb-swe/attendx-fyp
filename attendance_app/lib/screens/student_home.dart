@@ -17,6 +17,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   bool _deviceEnrolled = false;
   bool _isLoading = true;
   bool _keystoreKeyExists = false;
+  bool _isDeviceMismatch = false;
 
   @override
   void initState() {
@@ -24,7 +25,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     _loadUserInfo();
     _checkDeviceStatus();
     _checkKeystoreKey();
+    _checkDeviceMismatch();
   }
+
+  Future<void> _checkDeviceMismatch() async {
+  final prefs = await SharedPreferences.getInstance();
+  final mismatch = prefs.getBool('device_mismatch') ?? false;
+  setState(() {
+    _isDeviceMismatch = mismatch;
+  });
+}
 
   Future<void> _checkKeystoreKey() async {
   final hasKey = await CryptoService.hasKeys();
@@ -210,6 +220,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                         onTap: () async {
                                           await Navigator.pushNamed(context, '/enroll_device');
                                           _checkDeviceStatus();
+                                          _checkDeviceMismatch();
                                         },
                                         child: const Text(
                                           'Enroll Device →',                                  style: TextStyle(
@@ -277,30 +288,42 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     // Enroll device button
                     _buildActionCard(
                       icon: Icons.phone_android,
-                      title: (!_keystoreKeyExists && _deviceEnrolled)
-                      ? 'Re-enroll Device'
-                      : _deviceEnrolled
-                        ? 'Device Enrolled ✓'
-                        : 'Enroll Device',
-                  subtitle: (!_keystoreKeyExists && _deviceEnrolled)
-                      ? 'Reinstalled app? Re-register your device'
-                      : _deviceEnrolled
-                        ? 'Your device is registered'
-                        : 'Register your phone for attendance',
-                      color: _deviceEnrolled
+                      title: _isDeviceMismatch
+                        ? 'Device Mismatch'
+                        : (!_keystoreKeyExists && _deviceEnrolled)
+                          ? 'Re-enroll Device'
+                          : _deviceEnrolled
+                            ? 'Device Enrolled ✓'
+                            : 'Enroll Device',
+                    subtitle: _isDeviceMismatch
+                        ? 'Contact admin to reset your device'
+                        : (!_keystoreKeyExists && _deviceEnrolled)
+                          ? 'Reinstalled app? Re-register your device'
+                          : _deviceEnrolled
+                            ? 'Your device is registered'
+                            : 'Register your phone for attendance',
+                    color: _isDeviceMismatch
+                        ? const Color(0xFFFF5C38)
+                        : _deviceEnrolled
                           ? const Color(0xFF8A8A9A)
                           : const Color(0xFFFF5C38),
-                      onTap: (!_keystoreKeyExists && _deviceEnrolled)
-                      ? () async {
-                          await Navigator.pushNamed(context, '/enroll_device');
-                          _checkDeviceStatus();
-                        }
-                      : _deviceEnrolled
+                      onTap: _isDeviceMismatch
                         ? null
-                        : () async {
-                            await Navigator.pushNamed(context, '/enroll_device');
-                            _checkDeviceStatus();
-                          },
+                        : (!_keystoreKeyExists && _deviceEnrolled)
+                          ? () async {
+                              await Navigator.pushNamed(context, '/enroll_device');
+                              _checkDeviceStatus();
+                              _checkKeystoreKey();
+                              _checkDeviceMismatch();
+                            }
+                          : _deviceEnrolled
+                            ? null
+                            : () async {
+                                await Navigator.pushNamed(context, '/enroll_device');
+                                _checkDeviceStatus();
+                                _checkKeystoreKey();
+                                _checkDeviceMismatch();
+                              },
                     ),
                   ],
                 ),

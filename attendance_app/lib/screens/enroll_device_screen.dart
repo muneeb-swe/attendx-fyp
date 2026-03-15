@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/crypto_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class EnrollDeviceScreen extends StatefulWidget {
   const EnrollDeviceScreen({super.key});
@@ -14,6 +15,24 @@ class _EnrollDeviceScreenState extends State<EnrollDeviceScreen> {
   bool _isSuccess = false;
   String _errorMessage = '';
   String _statusMessage = '';
+  bool _isDeviceMismatch = false;
+
+  @override
+void initState() {
+  super.initState();
+  _checkMismatch();
+}
+
+  Future<void> _checkMismatch() async {
+    final prefs = await SharedPreferences.getInstance();
+    final mismatch = prefs.getBool('device_mismatch') ?? false;
+    if (mismatch) {
+      setState(() {
+        _isDeviceMismatch = true;
+        _errorMessage = 'This account is registered to a different device. Contact admin.';
+      });
+    }
+  }
 
   Future<void> _enrollDevice() async {
     setState(() {
@@ -67,6 +86,15 @@ class _EnrollDeviceScreenState extends State<EnrollDeviceScreen> {
           _isLoading = false;
           _isSuccess = true;
           _statusMessage = 'Device enrolled successfully!';
+        });
+      } else if (result['status'] == 403) {
+        // Device mismatch — save permanently
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('device_mismatch', true);
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'This account is registered to a different device. Contact admin.';
+          _isDeviceMismatch = true;
         });
       } else {
         final error = result['data'];
@@ -269,9 +297,9 @@ class _EnrollDeviceScreenState extends State<EnrollDeviceScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton.icon(
-                  onPressed: _isLoading || _isSuccess
-                      ? null
-                      : _enrollDevice,
+                  onPressed: _isLoading || _isSuccess || _isDeviceMismatch
+                  ? null
+                  : _enrollDevice,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0A0A0F),
                     foregroundColor: Colors.white,

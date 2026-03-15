@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'dart:async';
 
 class AttendanceHistoryScreen extends StatefulWidget {
   const AttendanceHistoryScreen({super.key});
@@ -14,11 +15,15 @@ class _AttendanceHistoryScreenState
   List<dynamic> _records = [];
   bool _isLoading = true;
   String _errorMessage = '';
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadHistory();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    if (mounted) _loadHistory();
+    });
   }
 
   Future<void> _loadHistory() async {
@@ -47,6 +52,12 @@ class _AttendanceHistoryScreenState
       });
     }
   }
+
+  @override
+void dispose() {
+  _refreshTimer?.cancel();
+  super.dispose();
+}
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +222,10 @@ class _AttendanceHistoryScreenState
                                 ],
                               ),
                             )
-                          : ListView.builder(
+                          : RefreshIndicator(
+                            onRefresh: _loadHistory,
+                            color: const Color(0xFF00C896),
+                            child: ListView.builder(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 16),
                               itemCount: _records.length,
@@ -347,6 +361,7 @@ class _AttendanceHistoryScreenState
                                 );
                               },
                             ),
+                          ),
                     ),
                   ],
                 ),
