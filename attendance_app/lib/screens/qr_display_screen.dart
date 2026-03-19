@@ -14,7 +14,7 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
   Map<String, dynamic>? _classInfo;
   String _qrImage = '';
   int _sessionId = 0;
-  int _countdown = 15;
+  int _countdown = 5;
   bool _isLoading = true;
   bool _sessionStarted = false;
   bool _isRefreshing = false;
@@ -55,7 +55,7 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
         _sessionId = data['session_id'];
         _qrImage = data['qr_image'];
         _sessionStarted = true;
-        _countdown = 15;
+        _countdown = 5;
         setState(() {
           _isLoading = false;
         });
@@ -112,12 +112,12 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
       final result = await ApiService.refreshQR(_sessionId);
       if (result['status'] == 200 && mounted) {
         _qrImage = result['data']['qr_image'];
-        _countdown = 15;
+        _countdown = 5;
         setState(() {});
       }
     } catch (e) {
       if (mounted) {
-        _countdown = 15;
+        _countdown = 5;
         setState(() {});
       }
     }
@@ -388,7 +388,7 @@ Future<bool> _onWillPop() async {
                             const SizedBox(height: 8),
 
                             LinearProgressIndicator(
-                              value: _isRefreshing ? null : _countdown / 15,
+                              value: _isRefreshing ? null : _countdown / 5,
                               backgroundColor: const Color(0xFFE0DDD5),
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 _countdown <= 5
@@ -414,7 +414,7 @@ Future<bool> _onWillPop() async {
                                       color: Color(0xFF8A8A9A)),
                                   SizedBox(height: 8),
                                   Text(
-                                    'Ask students to open the app and scan this QR code. The code refreshes every 15 seconds automatically.',
+                                    'Ask students to open the app and scan this QR code. The code refreshes every 5 seconds automatically.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: Color(0xFF8A8A9A),
