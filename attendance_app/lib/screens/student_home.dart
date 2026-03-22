@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/crypto_service.dart';
-import 'dart:io';
+import 'package:flutter/foundation.dart'; // for kIsWeb
+
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -74,6 +75,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     if (!mounted) return;
     Navigator.pushReplacementNamed(context, '/login');
   }
+
+  bool get _isMobile {
+  if (kIsWeb) return false;
+  return defaultTargetPlatform == TargetPlatform.android || 
+         defaultTargetPlatform == TargetPlatform.iOS;
+}
 
   @override
   Widget build(BuildContext context) {
@@ -253,7 +260,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     const SizedBox(height: 12),
 
                     // Scan QR button
-                    if (!Platform.isWindows)
+                    if (_isMobile)
                     _buildActionCard(
                       icon: Icons.qr_code_scanner,
                       title: 'Scan QR Code',
