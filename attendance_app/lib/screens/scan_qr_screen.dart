@@ -68,7 +68,7 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
       biometricPassed = await _localAuth.authenticate(
         localizedReason: 'Verify your identity to mark attendance',
         options: const AuthenticationOptions(
-          biometricOnly: false,
+          biometricOnly: true,
           stickyAuth: true,
         ),
       );

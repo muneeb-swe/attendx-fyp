@@ -36,6 +36,8 @@ object KeystoreHelper {
             .setDigests(KeyProperties.DIGEST_SHA256)
             .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
             .setKeySize(2048)
+            .setUserAuthenticationRequired(true)
+            .setUserAuthenticationValidityDurationSeconds(-1)
             .build()
 
         keyPairGenerator.initialize(parameterSpec)
