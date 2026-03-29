@@ -81,28 +81,46 @@ class _SplashScreenState extends State<SplashScreen>
     }
   }
 
-Future<void> _checkAutoLogin() async {
-  final token = await ApiService.getToken();
-  
-  if (token == null || !mounted) {
-    Navigator.pushReplacementNamed(context, '/login');
-    return;
+  Future<void> _checkAutoLogin() async {
+    final token = await ApiService.getToken();
+
+    if (token == null || !mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+      return;
+    }
+
+    // Verify token with server
+    try {
+      final isValid = await ApiService.verifyToken();
+
+      if (!isValid) {
+        // Token expired — clear and go to login
+        await ApiService.deleteToken();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/login');
+        return;
+      }
+    } catch (e) {
+      // No internet — go to login
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/login');
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final role = prefs.getString('role') ?? '';
+
+    if (!mounted) return;
+    if (role == 'teacher') {
+      Navigator.pushReplacementNamed(context, '/teacher_home');
+    } else if (role == 'student') {
+      Navigator.pushReplacementNamed(context, '/student_home');
+    } else {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
-
-  // Token exists → check role and navigate to home
-  final prefs = await SharedPreferences.getInstance();
-  final role = prefs.getString('role') ?? '';
-
-  if (!mounted) return;
-
-  if (role == 'teacher') {
-    Navigator.pushReplacementNamed(context, '/teacher_home');
-  } else if (role == 'student') {
-    Navigator.pushReplacementNamed(context, '/student_home');
-  } else {
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-}
 
   @override
   void dispose() {

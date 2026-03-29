@@ -191,3 +191,8 @@ class DeviceStatusView(APIView):
             return Response({
                 'enrolled': False
             })
+        
+class VerifyTokenView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        return Response({'valid': True})

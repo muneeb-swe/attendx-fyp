@@ -79,7 +79,7 @@ class GenerateQRView(APIView):
 
         # Generate token — 15 seconds expiry
         qr_token = str(uuid.uuid4())
-        expires_at = timezone.now() + timedelta(seconds=15)
+        expires_at = timezone.now() + timedelta(seconds=5)
 
         # Create session
         session = Session.objects.create(
@@ -132,7 +132,7 @@ class RefreshQRView(APIView):
         new_token = str(uuid.uuid4())
         session.previous_qr_token = session.qr_token  # save old token
         session.qr_token = new_token
-        session.expires_at = timezone.now() + timedelta(seconds=15)
+        session.expires_at = timezone.now() + timedelta(seconds=5)
         session.save()
 
         # Generate new QR image
