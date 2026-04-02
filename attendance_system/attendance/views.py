@@ -15,8 +15,7 @@ import uuid
 import qrcode
 import base64
 from io import BytesIO
-
-from .models import Class, Session, AttendanceRecord, Enrollment
+from .models import Class, Session, AttendanceRecord, Enrollment, QRTokenHistory
 from users.models import Teacher, Student, Device
 
 
@@ -90,6 +89,14 @@ class GenerateQRView(APIView):
             is_active=True
         )
 
+        # Store QR token history
+        QRTokenHistory.objects.create(
+            session=session,
+            qr_token=qr_token,
+            valid_from=timezone.now(),
+            valid_to=expires_at,
+        )
+
         # Generate QR image
         qr_data = f"{session.id}:{qr_token}"
         qr_image = generate_qr_image(qr_data)
@@ -135,6 +142,14 @@ class RefreshQRView(APIView):
         session.expires_at = timezone.now() + timedelta(seconds=5)
         session.save()
 
+        # Store new QR token in history
+        QRTokenHistory.objects.create(
+            session=session,
+            qr_token=new_token,
+            valid_from=timezone.now(),
+            valid_to=session.expires_at,
+        )
+
         # Generate new QR image
         qr_data = f"{session.id}:{new_token}"
         qr_image = generate_qr_image(qr_data)
@@ -174,6 +189,8 @@ class StopSessionView(APIView):
         session.is_active = False
         session.stopped_at = timezone.now()
         session.save()
+        # Delete QR token history — no longer needed
+        QRTokenHistory.objects.filter(session=session).delete()
 
         # Auto mark all enrolled students as absent if they didn't scan
         enrolled_students = Enrollment.objects.filter(
@@ -395,20 +412,22 @@ class MarkAttendanceView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Step 7: Check QR token is valid
-        if session.qr_token != qr_token and session.previous_qr_token != qr_token:
-            return Response(
-                {'error': 'Invalid QR code. Please scan the latest QR.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Step 8: Check QR not expired at SCAN TIME (not submission time)
+        # Step 7: Verify scan timestamp against QR token history
         scan_time = datetime.fromtimestamp(scan_timestamp / 1000, tz=pytz.UTC)
-        if scan_time > session.expires_at:
+
+        token_record = QRTokenHistory.objects.filter(
+            session=session,
+            qr_token=qr_token,
+            valid_from__lte=scan_time,
+            valid_to__gte=scan_time,
+        ).first()
+
+        if not token_record:
             return Response(
-                {'error': 'QR code had already expired when you scanned it.'},
+                {'error': 'QR code was not valid at the time of scan.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        #step 8 is deleted because we are now checking QR token validity using the QRTokenHistory model, which ensures that the token was valid at the time of the scan.
 
         # Step 9: Check student is enrolled in this class
         is_enrolled = Enrollment.objects.filter(
@@ -592,6 +611,7 @@ class DiscardSessionView(APIView):
 
         # Delete all attendance records for this session
         AttendanceRecord.objects.filter(session=session).delete()
+        QRTokenHistory.objects.filter(session=session).delete()
         # Delete the session itself
         session.delete()
 

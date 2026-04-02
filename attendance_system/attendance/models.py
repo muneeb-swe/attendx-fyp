@@ -56,3 +56,12 @@ class AttendanceRecord(models.Model):
 
     def __str__(self):
         return f"{self.student.roll_number} - {self.session}"
+
+class QRTokenHistory(models.Model):
+    session = models.ForeignKey(Session, on_delete=models.CASCADE)
+    qr_token = models.CharField(max_length=255)
+    valid_from = models.DateTimeField()
+    valid_to = models.DateTimeField()
+
+    class Meta:
+        unique_together = ('session', 'qr_token')

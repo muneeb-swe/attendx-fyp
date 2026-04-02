@@ -62,44 +62,23 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
     // Stop scanner
     _scannerController.stop();
 
-    // Step 1: Biometric authentication
-    bool biometricPassed = false;
-    try {
-      biometricPassed = await _localAuth.authenticate(
-        localizedReason: 'Verify your identity to mark attendance',
-        options: const AuthenticationOptions(
-          biometricOnly: true,
-          stickyAuth: true,
-        ),
-      );
-    } catch (e) {
-      _showError('Biometric authentication failed');
-      return;
-    }
-
-    if (!biometricPassed) {
-      _showError('Biometric authentication cancelled');
-      return;
-    }
-
     setState(() {
-      _statusMessage = 'Biometric verified!';
-      _statusSubMessage = 'Signing attendance request...';
-    });
+    _statusMessage = 'Authenticating...';
+    _statusSubMessage = 'Place your finger on the sensor';
+  });
 
-    // Step 2: Sign the QR data
-    String? signature;
-    try {
-      signature = await CryptoService.signData('$sessionId:$qrToken');
-    } catch (e) {
-      _showError('Failed to sign request. Is your device enrolled?');
-      return;
-    }
-
+    // Biometric + Sign in one hardware operation
+  String? signature;
+  try {
+    signature = await CryptoService.signData('$sessionId:$qrToken');
     if (signature == null) {
-      _showError('Failed to generate signature');
+      _showError('Authentication cancelled');
       return;
     }
+  } catch (e) {
+    _showError('Authentication failed. Please try again.');
+    return;
+  }
 
     setState(() {
       _statusMessage = 'Marking attendance...';
