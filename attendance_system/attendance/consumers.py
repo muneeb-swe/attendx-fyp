@@ -71,7 +71,6 @@ class StudentHistoryConsumer(AsyncWebsocketConsumer):
             user_id = token['user_id']
             self.user = await self.get_user(user_id)
         except Exception as e:
-            print(f"DEBUG: Auth failed: {e}")
             await self.close()
             return
 
@@ -81,7 +80,6 @@ class StudentHistoryConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
         await self.accept()
-        print(f"DEBUG: Student {self.user.id} connected to history stream")
 
     async def disconnect(self, close_code):
         if self.group_name:  # ← only discard if group was set

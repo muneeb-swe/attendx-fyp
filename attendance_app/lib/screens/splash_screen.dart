@@ -89,12 +89,10 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
 
-    // Verify token with server
     try {
       final isValid = await ApiService.verifyToken();
 
       if (!isValid) {
-        // Token expired — clear and go to login
         await ApiService.deleteToken();
         final prefs = await SharedPreferences.getInstance();
         await prefs.clear();
@@ -103,7 +101,6 @@ class _SplashScreenState extends State<SplashScreen>
         return;
       }
     } catch (e) {
-      // No internet — go to login
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/login');
       return;
@@ -122,12 +119,12 @@ class _SplashScreenState extends State<SplashScreen>
     }
   }
 
-  @override
-  void dispose() {
-    _logoController.dispose();
-    _subtitleController.dispose();
-    super.dispose();
-  }
+    @override
+    void dispose() {
+      _logoController.dispose();
+      _subtitleController.dispose();
+      super.dispose();
+    }
 
   @override
   Widget build(BuildContext context) {

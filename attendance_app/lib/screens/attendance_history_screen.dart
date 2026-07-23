@@ -60,17 +60,11 @@ class _AttendanceHistoryScreenState
     _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
     _wsChannel!.stream.listen(
       (message) {
-        print('DEBUG: History received: $message');
+
         final data = jsonDecode(message);
         if (data['type'] == 'history_update' && mounted) {
           _loadHistory();
         }
-      },
-      onError: (error) {
-        print('DEBUG: History WS error: $error');
-      },
-      onDone: () {
-        print('DEBUG: History WS closed');
       },
     );
   }

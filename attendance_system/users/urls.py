@@ -12,5 +12,5 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('device/enroll/', DeviceEnrollView.as_view(), name='device-enroll'),
     path('device/status/', DeviceStatusView.as_view(), name='device-status'),
-    path('auth/verify/', VerifyTokenView.as_view(), name='verify-token'),
+    path('verify/', VerifyTokenView.as_view(), name='verify-token'),
 ]
