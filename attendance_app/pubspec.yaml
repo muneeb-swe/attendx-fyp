@@ -37,6 +37,7 @@ dependencies:
   local_auth: ^2.1.8              # biometric authentication
   device_info_plus: ^9.1.0        # get device fingerprint
   flutter_secure_storage: ^9.0.0  # secure token storage
+  web_socket_channel: ^2.4.0
 
 dev_dependencies:
   flutter_test:

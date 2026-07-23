@@ -17,6 +17,8 @@ import base64
 from io import BytesIO
 from .models import Class, Session, AttendanceRecord, Enrollment, QRTokenHistory
 from users.models import Teacher, Student, Device
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 
 def format_timestamp(timestamp):
@@ -255,7 +257,7 @@ class SessionAttendanceView(APIView):
             })
 
         # Sort — present first, then absent
-        students_data.sort(key=lambda x: x['status'])
+        students_data.sort(key=lambda x: (0 if x['status'] == 'present' else 1))
 
         return Response({
             'session_id': session.id,
@@ -342,6 +344,20 @@ class SubmitAttendanceView(APIView):
         # Lock the attendance
         session.is_submitted = True
         session.save()
+
+        channel_layer = get_channel_layer()
+        records = AttendanceRecord.objects.filter(
+            session=session
+        ).select_related('student__user')
+        for record in records:
+            async_to_sync(channel_layer.group_send)(
+                f'student_{record.student.user.id}',
+                {
+                    'type': 'history_update',
+                    'action': 'session_submitted',
+                    'session_id': session.id,
+                }
+            )
 
         # Final summary
         records = AttendanceRecord.objects.filter(session=session)
@@ -502,6 +518,20 @@ class MarkAttendanceView(APIView):
         signature=signature
     )
 
+        # Push live count update to teacher via WebSocket
+        channel_layer = get_channel_layer()
+        total_present = AttendanceRecord.objects.filter(
+            session=session,
+            status='present'
+        ).count()
+        async_to_sync(channel_layer.group_send)(
+            f'session_{session_id}',
+            {
+                'type': 'attendance_update',
+                'total_present': total_present,
+            }
+        )
+
         return Response({
             'message': 'Attendance marked successfully',
             'roll_number': student.roll_number,
@@ -609,11 +639,28 @@ class DiscardSessionView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Delete all attendance records for this session
+        # Get affected students FIRST
+        affected_students = list(
+            AttendanceRecord.objects.filter(session=session)
+            .values_list('student__user__id', flat=True)
+        )
+
+        # THEN delete
         AttendanceRecord.objects.filter(session=session).delete()
         QRTokenHistory.objects.filter(session=session).delete()
-        # Delete the session itself
         session.delete()
+
+        # THEN notify
+        channel_layer = get_channel_layer()
+        for user_id in affected_students:
+            async_to_sync(channel_layer.group_send)(
+                f'student_{user_id}',
+                {
+                    'type': 'history_update',
+                    'action': 'session_discarded',
+                    'session_id': session_id,
+                }
+            )
 
         return Response({
             'message': 'Session discarded successfully',

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AttendanceHistoryScreen extends StatefulWidget {
   const AttendanceHistoryScreen({super.key});
@@ -15,15 +18,13 @@ class _AttendanceHistoryScreenState
   List<dynamic> _records = [];
   bool _isLoading = true;
   String _errorMessage = '';
-  Timer? _refreshTimer;
+  WebSocketChannel? _wsChannel;
 
   @override
   void initState() {
     super.initState();
     _loadHistory();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-    if (mounted) _loadHistory();
-    });
+    _connectWebSocket();
   }
 
   Future<void> _loadHistory() async {
@@ -53,11 +54,32 @@ class _AttendanceHistoryScreenState
     }
   }
 
+  void _connectWebSocket() async {
+    final token = await ApiService.getToken();
+    final wsUrl = 'ws://MuneebOfficial-52165.portmap.host:52165/ws/attendance/student/history/?token=$token';
+    _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
+    _wsChannel!.stream.listen(
+      (message) {
+        print('DEBUG: History received: $message');
+        final data = jsonDecode(message);
+        if (data['type'] == 'history_update' && mounted) {
+          _loadHistory();
+        }
+      },
+      onError: (error) {
+        print('DEBUG: History WS error: $error');
+      },
+      onDone: () {
+        print('DEBUG: History WS closed');
+      },
+    );
+  }
+
   @override
-void dispose() {
-  _refreshTimer?.cancel();
-  super.dispose();
-}
+  void dispose() {
+    _wsChannel?.sink.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

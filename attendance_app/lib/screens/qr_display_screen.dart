@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 class QRDisplayScreen extends StatefulWidget {
   const QRDisplayScreen({super.key});
@@ -20,8 +21,8 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
   bool _isRefreshing = false;
   String _errorMessage = '';
   Timer? _countdownTimer;
-  Timer? _attendanceTimer;
   int _totalPresent = 0;
+  WebSocketChannel? _wsChannel;
 
   @override
   void didChangeDependencies() {
@@ -35,7 +36,6 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
       if (!isSameClass || !_sessionStarted) {
         _classInfo = newClassInfo;
         _countdownTimer?.cancel();
-        _attendanceTimer?.cancel();
         _sessionStarted = false;
         _startSession();
       }
@@ -89,18 +89,33 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
     });
   }
 
+  void _connectWebSocket() {
+    final wsUrl = 'ws://MuneebOfficial-52165.portmap.host:52165/ws/attendance/session/$_sessionId/';
+    _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
+    _wsChannel!.stream.listen(
+      (message) {
+        final data = jsonDecode(message);
+        if (data['type'] == 'attendance_update' && mounted) {
+          setState(() {
+            _totalPresent = data['total_present'];
+          });
+        }
+      },
+      onError: (error) {
+        // silently fail — not critical
+      },
+      onDone: () {
+        // reconnect if disconnected
+        if (mounted && _sessionStarted) {
+          Future.delayed(const Duration(seconds: 3), _connectWebSocket);
+        }
+      },
+    );
+  }
+
   void _startTimers() {
     _startCountdownTimer();
-
-    // Check attendance every 5 seconds
-    _attendanceTimer =
-        Timer.periodic(const Duration(seconds: 5), (timer) async {
-      if (!mounted || !_sessionStarted) {
-        timer.cancel();
-        return;
-      }
-      await _checkAttendance();
-    });
+    _connectWebSocket();
   }
 
   Future<void> _refreshQR() async {
@@ -128,18 +143,6 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
     }
   }
 
-  Future<void> _checkAttendance() async {
-    try {
-      final result = await ApiService.getSessionAttendance(_sessionId);
-      if (result['status'] == 200 && mounted) {
-        setState(() {
-          _totalPresent = result['data']['total_present'] ?? 0;
-        });
-      }
-    } catch (e) {
-      // silent fail
-    }
-  }
 
   Future<void> _stopSession() async {
     final confirm = await showDialog<bool>(
@@ -168,7 +171,6 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
     if (confirm != true) return;
 
     _countdownTimer?.cancel();
-    _attendanceTimer?.cancel();
     setState(() {
       _isLoading = true;
       _qrImage = '';
@@ -199,11 +201,11 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
   }
 
   @override
-void dispose() {
-  _countdownTimer?.cancel();
-  _attendanceTimer?.cancel();
-  super.dispose();
-}
+  void dispose() {
+    _countdownTimer?.cancel();
+    _wsChannel?.sink.close();
+    super.dispose();
+  }
 
 Future<bool> _onWillPop() async {
   if (!_sessionStarted) return true;
@@ -233,7 +235,6 @@ Future<bool> _onWillPop() async {
 
   if (confirm == true) {
     _countdownTimer?.cancel();
-    _attendanceTimer?.cancel();
     await ApiService.discardSession(_sessionId);
     return true;
   }
