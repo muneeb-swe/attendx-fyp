@@ -17,6 +17,7 @@ class _AttendanceReviewScreenState extends State<AttendanceReviewScreen> {
   bool _isLoading = true;
   bool _isSubmitting = false;
   String _errorMessage = '';
+  String _searchQuery = '';
 
   @override
   void didChangeDependencies() {
@@ -173,6 +174,12 @@ class _AttendanceReviewScreenState extends State<AttendanceReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredStudents = _students.where((s) {
+                    final name = s['name'].toString().toLowerCase();
+                    final roll = s['roll_number'].toString().toLowerCase();
+                    return name.contains(_searchQuery) || 
+                          roll.contains(_searchQuery);
+                  }).toList();
     return WillPopScope(
     onWillPop: () async {
       await _confirmDiscard();
@@ -276,17 +283,38 @@ class _AttendanceReviewScreenState extends State<AttendanceReviewScreen> {
                       ),
                     ),
 
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Search student...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value.toLowerCase();
+                          });
+                        },
+                      ),
+                    ),
+
                     // Student list
                     Expanded(
                       child: ListView.builder(
-                        itemCount: _students.length,
+                        itemCount: filteredStudents.length,
                         itemBuilder: (context, index) {
-                          final student = _students[index];
+                          final student = filteredStudents[index];
                           final isPresent =
                               student['status'] == 'present';
 
                           return GestureDetector(
-                            onTap: () => _toggleStatus(index),
+                            onTap: () {
+                              final actualIndex = _students.indexOf(filteredStudents[index]);
+                              _toggleStatus(actualIndex);
+                            },
                             child: Container(
                               margin: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 4),
