@@ -56,7 +56,7 @@ class _AttendanceHistoryScreenState
 
   void _connectWebSocket() async {
     final token = await ApiService.getToken();
-    final wsUrl = 'ws://MuneebOfficial-52165.portmap.host:52165/ws/attendance/student/history/?token=$token';
+    final wsUrl = 'wss://attendx-backend.onrender.com/ws/attendance/student/history/?token=$token';
     _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
     _wsChannel!.stream.listen(
       (message) {

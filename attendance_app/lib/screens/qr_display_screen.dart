@@ -90,7 +90,8 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
   }
 
   void _connectWebSocket() {
-    final wsUrl = 'ws://MuneebOfficial-52165.portmap.host:52165/ws/attendance/session/$_sessionId/';
+    final wsUrl = 'wss://attendx-backend.onrender.com/ws/attendance/session/$_sessionId/';
+
     _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
     _wsChannel!.stream.listen(
       (message) {
