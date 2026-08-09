@@ -155,7 +155,7 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOWED_ORIGINS = [
-    'https://attendx.vercel.app',  
+    'https://attendx-fyp-web.vercel.app',  
     'http://localhost:3000',
     'http://localhost:8000',
     'https://attendx-fyp-production.up.railway.app',
@@ -182,7 +182,7 @@ CORS_ALLOW_HEADERS = [
 
 CSRF_TRUSTED_ORIGINS = [
     'https://attendx-fyp-production.up.railway.app',
-    'https://attendx.vercel.app',
+    'https://attendx-fyp-web.vercel.app',
     'http://localhost:3000',
     'http://localhost:8000',
 ]
