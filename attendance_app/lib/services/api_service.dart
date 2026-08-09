@@ -6,7 +6,7 @@ class ApiService {
   // Change this to your Django server IP
   //static const String baseUrl = 'http://MuneebOfficial-52165.portmap.host:52165/api';
   //static const String baseUrl = 'http://localhost:8000/api';
-  static const String baseUrl = 'https://attendx-backend.onrender.com/api';
+  static const String baseUrl = 'https://attendx-fyp-production.up.railway.app/api';
   static const FlutterSecureStorage storage = FlutterSecureStorage();
 
   // Save token after login
