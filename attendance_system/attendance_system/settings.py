@@ -180,6 +180,13 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://attendx-fyp-production.up.railway.app',
+    'https://attendx.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:8000',
+]
+
 ASGI_APPLICATION = 'attendance_system.asgi.application'
 
 CHANNEL_LAYERS = {
