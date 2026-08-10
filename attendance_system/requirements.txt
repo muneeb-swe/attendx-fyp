@@ -1,6 +1,6 @@
 pip==24.0
 django-cors-headers>=4.9.0
-psycopg[binary]>=3.1
+psycopg2-binary==2.9.12
 whitenoise>=6.7.0
 asgiref==3.11.1
 channels==4.3.2
@@ -12,3 +12,5 @@ djangorestframework_simplejwt==5.5.1
 pytz==2026.1.post1
 qrcode==8.2
 daphne==4.2.2
+pillow==12.1.1
+
