@@ -137,9 +137,8 @@ class RefreshQRView(APIView):
         except Session.DoesNotExist:
             return Response({'error': 'Active session not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Generate new token — reset 15 second timer
+        # Generate new token — reset 5 second timer
         new_token = str(uuid.uuid4())
-        session.previous_qr_token = session.qr_token  # save old token
         session.qr_token = new_token
         session.expires_at = timezone.now() + timedelta(seconds=5)
         session.save()
