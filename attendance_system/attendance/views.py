@@ -78,7 +78,7 @@ class GenerateQRView(APIView):
             AttendanceRecord.objects.filter(session=session).delete()
             session.delete()
 
-        # Generate token — 15 seconds expiry
+        # Generate token — 5 seconds expiry
         qr_token = str(uuid.uuid4())
         expires_at = timezone.now() + timedelta(seconds=5)
 
@@ -95,7 +95,7 @@ class GenerateQRView(APIView):
         QRTokenHistory.objects.create(
             session=session,
             qr_token=qr_token,
-            valid_from=timezone.now(),
+            valid_from=expires_at - timedelta(seconds=5),
             valid_to=expires_at,
         )
 
@@ -147,7 +147,7 @@ class RefreshQRView(APIView):
         QRTokenHistory.objects.create(
             session=session,
             qr_token=new_token,
-            valid_from=timezone.now(),
+            valid_from=session.expires_at - timedelta(seconds=5),
             valid_to=session.expires_at,
         )
 
@@ -233,7 +233,11 @@ class SessionAttendanceView(APIView):
             )
 
         try:
-            session = Session.objects.get(id=session_id)
+            teacher = Teacher.objects.get(user=request.user)
+            session = Session.objects.get(
+                id=session_id,
+                teacher=teacher
+            )
         except Session.DoesNotExist:
             return Response(
                 {'error': 'Session not found'},
@@ -282,7 +286,11 @@ class EditAttendanceView(APIView):
             )
 
         try:
-            record = AttendanceRecord.objects.get(id=record_id)
+            teacher = Teacher.objects.get(user=request.user)
+            record = AttendanceRecord.objects.select_related('session').get(
+                id=record_id,
+                session__teacher=teacher  # ← add this
+            )
         except AttendanceRecord.DoesNotExist:
             return Response(
                 {'error': 'Record not found'},
@@ -428,7 +436,15 @@ class MarkAttendanceView(APIView):
             )
 
         # Step 7: Verify scan timestamp against QR token history
+        server_now = timezone.now()
         scan_time = datetime.fromtimestamp(scan_timestamp / 1000, tz=pytz.UTC)
+        
+        # Check clock skew — reject if timestamp too far from server time
+        if abs((server_now - scan_time).total_seconds()) > 15:
+            return Response(
+                {'error': 'Invalid scan timestamp'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         token_record = QRTokenHistory.objects.filter(
             session=session,

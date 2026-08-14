@@ -89,9 +89,10 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
     });
   }
 
-  void _connectWebSocket() {
-    final wsUrl = 'wss://attendx-fyp-production.up.railway.app/ws/attendance/session/$_sessionId/';
-
+  void _connectWebSocket() async {
+    final token = await ApiService.getToken();
+    final wsUrl = 'wss://attendx-fyp-production.up.railway.app/ws/attendance/session/$_sessionId/?token=$token';
+    
     _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
     _wsChannel!.stream.listen(
       (message) {
