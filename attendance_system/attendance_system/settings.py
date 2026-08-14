@@ -23,10 +23,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # Security
-SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = os.environ.get['SECRET_KEY']
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
@@ -36,7 +36,7 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_REFERRER_POLICY = 'same-origin'
 
-    
+
 # Allowed hosts
 ALLOWED_HOSTS = [
     'localhost',

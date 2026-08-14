@@ -135,7 +135,7 @@ class DeviceEnrollView(APIView):
             )
 
         # Check if student already has a device enrolled
-        existing_device = Device.objects.filter(student=student).first()
+        existing_device = Device.objects.filter(student=student,  is_active=True).first()
 
         if existing_device:
             # Re-enrollment: check hardware ID matches
@@ -180,7 +180,7 @@ class DeviceStatusView(APIView):
     def get(self, request):
         try:
             student = Student.objects.get(user=request.user)
-            device = Device.objects.get(student=student)
+            device = Device.objects.get(student=student, is_active=True)
             return Response({
                 'enrolled': True,
                 'device_fingerprint': device.device_fingerprint,

@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.db.models import Q
 
 
 class User(AbstractUser):
@@ -35,11 +36,20 @@ class Teacher(models.Model):
 
 
 class Device(models.Model):
-    student = models.OneToOneField(Student, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='devices')
     public_key = models.TextField()
     device_fingerprint = models.CharField(max_length=255)
     registered_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['student'],
+                condition=Q(is_active=True),
+                name='one_active_device_per_student'
+            )
+        ]
 
     def __str__(self):
         return f"{self.student.roll_number} - {self.device_fingerprint[:20]}"
