@@ -44,11 +44,19 @@ class Device(models.Model):
 
     class Meta:
         constraints = [
+            # One active device per student
             models.UniqueConstraint(
                 fields=['student'],
                 condition=Q(is_active=True),
                 name='one_active_device_per_student'
-            )
+            ),
+
+            # One active student per physical device
+            models.UniqueConstraint(
+                fields=['device_fingerprint'],
+                condition=Q(is_active=True),
+                name='one_active_device_fingerprint'
+            ),
         ]
 
     def __str__(self):
