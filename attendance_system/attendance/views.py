@@ -436,16 +436,7 @@ class MarkAttendanceView(APIView):
             )
 
         # Step 7: Verify scan timestamp against QR token history
-        server_now = timezone.now()
         scan_time = datetime.fromtimestamp(scan_timestamp / 1000, tz=pytz.UTC)
-        
-        # Check clock skew — reject if timestamp too far from server time
-        if abs((server_now - scan_time).total_seconds()) > 15:
-            return Response(
-                {'error': 'Invalid scan timestamp'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         token_record = QRTokenHistory.objects.filter(
             session=session,
             qr_token=qr_token,
@@ -539,7 +530,6 @@ class MarkAttendanceView(APIView):
             session=session,
             status='present'
         ).count()
-        print(f"SENDING LIVE COUNT: session={session_id}, "f"group=session_{session_id}, count={total_present}")
         async_to_sync(channel_layer.group_send)(
             f'session_{session_id}',
             {

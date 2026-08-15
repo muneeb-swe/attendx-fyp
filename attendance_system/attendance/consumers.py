@@ -14,51 +14,23 @@ class AttendanceConsumer(AsyncWebsocketConsumer):
         self.group_name = None
         self.session_id = self.scope['url_route']['kwargs']['session_id']
 
-        print(
-            f"WEBSOCKET CONNECT: session={self.session_id}",
-            flush=True
-        )
-
         query_string = self.scope.get('query_string', b'').decode()
 
         params = parse_qs(query_string)
         token_list = params.get('token', [])
 
-        print(
-            f"WEBSOCKET TOKEN PRESENT: {bool(token_list)}",
-            flush=True
-        )
-
         if not token_list:
-            print("WEBSOCKET REJECTED: NO TOKEN", flush=True)
             await self.close()
             return
 
         try:
             token = AccessToken(token_list[0])
 
-            print("WEBSOCKET JWT VALID", flush=True)
-
             user_id = token['user_id']
-
-            print(
-                f"WEBSOCKET USER ID: {user_id}",
-                flush=True
-            )
 
             self.user = await self.get_user(user_id)
 
-            print(
-                f"WEBSOCKET USER: {self.user.username}, "
-                f"ROLE: {self.user.role}",
-                flush=True
-            )
-
             if self.user.role != 'teacher':
-                print(
-                    "WEBSOCKET REJECTED: USER IS NOT TEACHER",
-                    flush=True
-                )
                 await self.close()
                 return
 
@@ -67,34 +39,15 @@ class AttendanceConsumer(AsyncWebsocketConsumer):
                 self.user
             )
 
-            print(
-                f"WEBSOCKET SESSION OWNERSHIP: {owns}",
-                flush=True
-            )
-
             if not owns:
-                print(
-                    "WEBSOCKET REJECTED: SESSION NOT OWNED BY TEACHER",
-                    flush=True
-                )
                 await self.close()
                 return
 
         except Exception as e:
-            print(
-                f"WEBSOCKET AUTH ERROR: {type(e).__name__}: {e}",
-                flush=True
-            )
             await self.close()
             return
 
         self.group_name = f"session_{self.session_id}"
-
-        print(
-            f"WEBSOCKET AUTHORIZED: teacher={self.user.username}, "
-            f"session={self.session_id}, group={self.group_name}",
-            flush=True
-        )
 
         await self.channel_layer.group_add(
             self.group_name,
@@ -102,11 +55,6 @@ class AttendanceConsumer(AsyncWebsocketConsumer):
         )
 
         await self.accept()
-
-        print(
-            "WEBSOCKET ACCEPTED",
-            flush=True
-        )
 
     @database_sync_to_async
     def verify_session_ownership(self, session_id, user):
