@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+final storage = const FlutterSecureStorage();
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -41,6 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         // Save token and user info
         await ApiService.saveToken(data['access_token']);
+        await storage.write(key: 'refresh_token', value: data['refresh_token']);      
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('role', data['role']);
         await prefs.setString('name', data['name']);

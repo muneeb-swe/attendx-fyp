@@ -26,11 +26,37 @@ class ApiService {
 
   // Headers with token
   static Future<Map<String, String>> getHeaders() async {
-    final token = await getToken();
+    String? token = await getToken();
+    
+    // Try to refresh if expired
+    if (token == null) {
+      final refreshed = await _refreshToken();
+      if (!refreshed) return {'Content-Type': 'application/json'};
+      token = await getToken();
+    }
+    
     return {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
     };
+  }
+
+  static Future<bool> _refreshToken() async {
+    final refreshToken = await storage.read(key: 'refresh_token');
+    if (refreshToken == null) return false;
+    
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/token/refresh/'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'refresh': refreshToken}),
+    );
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      await saveToken(data['access']);
+      return true;
+    }
+    return false;
   }
 
   // LOGIN
