@@ -539,6 +539,7 @@ class MarkAttendanceView(APIView):
             session=session,
             status='present'
         ).count()
+        print(f"SENDING LIVE COUNT: session={session_id}, "f"group=session_{session_id}, count={total_present}")
         async_to_sync(channel_layer.group_send)(
             f'session_{session_id}',
             {

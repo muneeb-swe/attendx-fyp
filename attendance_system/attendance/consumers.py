@@ -9,9 +9,6 @@ from django.contrib.auth import get_user_model
 
 
 class AttendanceConsumer(AsyncWebsocketConsumer):
-    """
-    WebSocket consumer for teacher's live attendance count
-    """
 
     async def connect(self):
         self.group_name = None
@@ -49,6 +46,7 @@ class AttendanceConsumer(AsyncWebsocketConsumer):
             return
 
         self.group_name = f'session_{self.session_id}'
+        print(f"WEBSOCKET AUTHORIZED: teacher={self.user.username}, "f"session={self.session_id}, group={self.group_name}")
         await self.channel_layer.group_add(
             self.group_name,
             self.channel_name

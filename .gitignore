@@ -1,8 +1,4 @@
-cd D:\FYP
-```
 
-Create a file `D:\FYP\.gitignore` and paste:
-```
 # Python / Django
 __pycache__/
 *.pyc
