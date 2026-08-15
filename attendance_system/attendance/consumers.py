@@ -117,6 +117,11 @@ class AttendanceConsumer(AsyncWebsocketConsumer):
         except (Teacher.DoesNotExist, Session.DoesNotExist):
             return False
 
+    @database_sync_to_async
+    def get_user(self, user_id):
+        User = get_user_model()
+        return User.objects.get(id=user_id)
+
     async def disconnect(self, close_code):
         if self.group_name:
             await self.channel_layer.group_discard(
