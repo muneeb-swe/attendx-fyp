@@ -138,9 +138,13 @@ class ApiService {
       headers: headers,
       body: jsonEncode({
         'class_id': classId,
-        'expected_count': ?expectedCount,
+        if (expectedCount != null)
+          'expected_count': expectedCount,
         }),
     );
+
+    print('Generate QR status: ${response.statusCode}');
+    print('Generate QR response: ${response.body}');
 
     return {
       'status': response.statusCode,

@@ -270,7 +270,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
+                          child: const Text('Skip'),
                         ),
                         ElevatedButton(
                           onPressed: () {
