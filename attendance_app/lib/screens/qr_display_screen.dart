@@ -49,7 +49,7 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
     });
 
     try {
-      final result = await ApiService.generateQR(_classInfo!['id'], expectedCount: _classInfo!['expected_count'],);
+      final result = await ApiService.generateQR(_classInfo!['class_info']['id'], expectedCount: _classInfo!['expected_count'],);
       print('QR RESULT: $result');
       if (result['status'] == 201) {
         final data = result['data'];
