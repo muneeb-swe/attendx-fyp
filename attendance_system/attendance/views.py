@@ -5,7 +5,6 @@ from cryptography.hazmat.primitives.serialization import load_der_public_key
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.exceptions import InvalidSignature
 import base64
-from requests import session
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
