@@ -4,12 +4,10 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.exceptions import InvalidSignature
-import base64
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from django.utils import timezone
 from datetime import timedelta, datetime
 import uuid
 import qrcode
@@ -32,6 +30,35 @@ def generate_qr_image(data):
     buffer = BytesIO()
     qr.save(buffer, format='PNG')
     return base64.b64encode(buffer.getvalue()).decode()
+
+def stop_session(session):
+    session.is_active = False
+    session.stopped_at = timezone.now()
+    session.save()
+
+    QRTokenHistory.objects.filter(session=session).delete()
+
+    enrolled_students = Enrollment.objects.filter(
+        class_enrolled=session.class_ref
+    ).values_list('student', flat=True)
+
+    already_present = AttendanceRecord.objects.filter(
+        session=session
+    ).values_list('student', flat=True)
+
+    absent_students = set(enrolled_students) - set(already_present)
+
+    for student_id in absent_students:
+        student = Student.objects.get(id=student_id)
+
+        AttendanceRecord.objects.create(
+            session=session,
+            student=student,
+            device=None,
+            status='absent',
+            original_status='absent',
+            signature=''
+        )
 
 
 class GenerateQRView(APIView):
@@ -194,33 +221,7 @@ class StopSessionView(APIView):
             )
 
         # Stop the session
-        session.is_active = False
-        session.stopped_at = timezone.now()
-        session.save()
-        # Delete QR token history — no longer needed
-        QRTokenHistory.objects.filter(session=session).delete()
-
-        # Auto mark all enrolled students as absent if they didn't scan
-        enrolled_students = Enrollment.objects.filter(
-            class_enrolled=session.class_ref
-        ).values_list('student', flat=True)
-
-        already_present = AttendanceRecord.objects.filter(
-            session=session
-        ).values_list('student', flat=True)
-
-        # Mark absent for students who didn't scan
-        absent_students = set(enrolled_students) - set(already_present)
-        for student_id in absent_students:
-            student = Student.objects.get(id=student_id)
-            AttendanceRecord.objects.create(
-            session=session,
-            student=student,
-            device=None,
-            status='absent',
-            original_status='absent',
-            signature=''
-        )
+        stop_session(session)
 
         return Response({
             'message': 'Session stopped successfully',
@@ -492,7 +493,6 @@ class MarkAttendanceView(APIView):
                 )
             else:
                 # DER format (Base64) from Android Keystore
-                from cryptography.hazmat.primitives.serialization import load_der_public_key
                 der_bytes = base64.b64decode(device.public_key)
                 public_key = load_der_public_key(der_bytes)
 
@@ -566,33 +566,7 @@ class MarkAttendanceView(APIView):
         # Check if limit reached
         if session.expected_count and present_count >= session.expected_count:
             auto_stopped = True
-            session.is_active = False
-            session.stopped_at = timezone.now()
-            session.save()
-
-            # Delete QR history
-            QRTokenHistory.objects.filter(session=session).delete()
-
-            # Auto mark absent
-            enrolled_students = Enrollment.objects.filter(
-                class_enrolled=session.class_ref
-            ).values_list('student', flat=True)
-
-            already_present = AttendanceRecord.objects.filter(
-                session=session
-            ).values_list('student', flat=True)
-
-            absent_students = set(enrolled_students) - set(already_present)
-            for student_id in absent_students:
-                absent_student = Student.objects.get(id=student_id)
-                AttendanceRecord.objects.create(
-                    session=session,
-                    student=absent_student,
-                    device=None,
-                    status='absent',
-                    original_status='absent',
-                    signature=''
-                )
+            stop_session(session)
 
         async_to_sync(channel_layer.group_send)(
             f'session_{session.id}',

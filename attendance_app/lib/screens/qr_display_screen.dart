@@ -99,9 +99,16 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
       (message) {
         final data = jsonDecode(message);
         if (data['type'] == 'attendance_update' && mounted) {
+          final totalPresent = data['total_present'] ?? 0;
+          final autoStopped = data['auto_stopped'] ?? false;
           setState(() {
-            _totalPresent = data['total_present'];
+            _totalPresent = totalPresent;
           });
+
+          // Backend automatically stopped the session
+          if (autoStopped) {
+            _stopSession(automatic: true);
+          }
         }
       },
       onError: (error) {
@@ -147,8 +154,9 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
   }
 
 
-  Future<void> _stopSession() async {
-    final confirm = await showDialog<bool>(
+  Future<void> _stopSession({bool automatic = false}) async {
+    if (!automatic) {
+      final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Stop Attendance?'),
@@ -165,13 +173,15 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
               backgroundColor: const Color(0xFFFF5C38),
             ),
             child: const Text('Stop',
-                style: TextStyle(color: Colors.white)),
+                style: TextStyle(color: Colors.white)
+                ),
           ),
         ],
       ),
     );
 
     if (confirm != true) return;
+    }
 
     _countdownTimer?.cancel();
     setState(() {
@@ -180,16 +190,19 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
     });
 
     try {
-      final result = await ApiService.stopSession(_sessionId);
-      if (result['status'] == 200 && mounted) {
-        Navigator.pushReplacementNamed(
-          context,
-          '/attendance_review',
-          arguments: {
-            'session_id': _sessionId,
-            'class_info': _classInfo
-          },
-        );
+      // Only manually stopped sessions need the API call.
+      if (!automatic) {
+        final result = await ApiService.stopSession(_sessionId);
+        if (result['status'] == 200 && mounted) {
+          Navigator.pushReplacementNamed(
+            context,
+            '/attendance_review',
+            arguments: {
+              'session_id': _sessionId,
+              'class_info': _classInfo
+            },
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

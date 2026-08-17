@@ -81,7 +81,8 @@ class AttendanceConsumer(AsyncWebsocketConsumer):
         # Send attendance update to teacher
         await self.send(text_data=json.dumps({
             'type': 'attendance_update',
-            'total_present': event['total_present']
+            'total_present': event['total_present'],
+            'auto_stopped': event.get('auto_stopped', False),
         }))
 
     @database_sync_to_async
