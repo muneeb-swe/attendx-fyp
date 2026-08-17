@@ -49,7 +49,7 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
     });
 
     try {
-      final result = await ApiService.generateQR(_classInfo!['id']);
+      final result = await ApiService.generateQR(_classInfo!['id'], expectedCount: _classInfo!['expected_count'],);
       if (result['status'] == 201) {
         final data = result['data'];
         _sessionId = data['session_id'];
@@ -280,7 +280,9 @@ Future<bool> _onWillPop() async {
                     border: Border.all(color: const Color(0xFF00C896)),
                   ),
                   child: Text(
-                    '$_totalPresent Present',
+                    _classInfo?['expected_count'] != null
+                        ? '$_totalPresent / ${_classInfo!['expected_count']} Present'
+                        : '$_totalPresent Present',
                     style: const TextStyle(
                       color: Color(0xFF00C896),
                       fontSize: 12,

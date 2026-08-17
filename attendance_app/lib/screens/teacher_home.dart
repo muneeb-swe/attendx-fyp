@@ -248,11 +248,53 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
             width: double.infinity,
             height: 44,
             child: ElevatedButton.icon(
-              onPressed: () {
+              onPressed: () async{
+                int? expectedCount;
+
+                // Ask teacher for expected count
+                await showDialog(
+                  context: context,
+                  builder: (context) {
+                    final controller = TextEditingController();
+
+                    return AlertDialog(
+                      title: const Text('Start Attendance'),
+                      content: TextField(
+                        controller: controller,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Expected students',
+                          hintText: 'e.g. 30',
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            if (controller.text.isNotEmpty) {
+                              expectedCount = int.tryParse(controller.text);
+                            }
+                            Navigator.pop(context);
+                          },
+                          child: const Text('Start'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+
+                if (!mounted) return;
+
                 Navigator.pushNamed(
                   context,
                   '/qr_display',
-                  arguments: cls,
+                  arguments: {
+                    'class_info': cls,
+                    'expected_count': expectedCount,
+                  },
                 );
               },
               style: ElevatedButton.styleFrom(

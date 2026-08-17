@@ -131,12 +131,15 @@ class ApiService {
   }
 
   // GENERATE QR (teacher)
-  static Future<Map<String, dynamic>> generateQR(int classId) async {
+  static Future<Map<String, dynamic>> generateQR(int classId, {int? expectedCount,}) async {
     final headers = await getHeaders();
     final response = await http.post(
       Uri.parse('$baseUrl/attendance/generate-qr/'),
       headers: headers,
-      body: jsonEncode({'class_id': classId}),
+      body: jsonEncode({
+        'class_id': classId,
+        'expected_count': ?expectedCount,
+        }),
     );
 
     return {
