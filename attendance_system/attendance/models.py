@@ -28,8 +28,10 @@ class Session(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     is_active = models.BooleanField(default=True)
-    is_submitted = models.BooleanField(default=False)  # ← new
-    stopped_at = models.DateTimeField(null=True, blank=True)  # ← new
+    is_submitted = models.BooleanField(default=False) 
+    stopped_at = models.DateTimeField(null=True, blank=True) 
+    expected_count = models.IntegerField(null=True, blank=True)
+    present_count = models.IntegerField(default=0)
 
     def __str__(self):
         return f"{self.class_ref.name} - {self.created_at}"

@@ -5,6 +5,7 @@ from cryptography.hazmat.primitives.serialization import load_der_public_key
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.exceptions import InvalidSignature
 import base64
+from requests import session
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -19,6 +20,7 @@ from .models import Class, Session, AttendanceRecord, Enrollment, QRTokenHistory
 from users.models import Teacher, Student, Device
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from django.db import connection
 
 
 def format_timestamp(timestamp):
@@ -514,27 +516,85 @@ class MarkAttendanceView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Step 12: All checks passed — mark attendance
-        record = AttendanceRecord.objects.create(
-        session=session,
-        student=student,
-        device=device,
-        status='present',
-        original_status='present',
-        signature=signature
-    )
+        # Step 12: Atomic counter update with limit check
+        table_name = Session._meta.db_table
 
-        # Push live count update to teacher via WebSocket
-        channel_layer = get_channel_layer()
-        total_present = AttendanceRecord.objects.filter(
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"""
+                UPDATE {table_name}
+                SET present_count = present_count + 1
+                WHERE id = %s
+                AND is_active = TRUE
+                AND (
+                    expected_count IS NULL
+                    OR present_count < expected_count
+                )
+                RETURNING present_count;
+                """,
+                [session.id]
+            )
+            row = cursor.fetchone()
+
+        if row is None:
+            return Response(
+                {'error': 'Attendance limit has been reached.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        present_count = row[0]
+
+        # Create attendance record
+        record = AttendanceRecord.objects.create(
             session=session,
-            status='present'
-        ).count()
+            student=student,
+            device=device,
+            status='present',
+            original_status='present',
+            signature=signature
+        )
+
+        # Push WebSocket update to teacher
+        channel_layer = get_channel_layer()
+        auto_stopped = False
+
+        # Check if limit reached
+        if session.expected_count and present_count >= session.expected_count:
+            auto_stopped = True
+            session.is_active = False
+            session.stopped_at = timezone.now()
+            session.save()
+
+            # Delete QR history
+            QRTokenHistory.objects.filter(session=session).delete()
+
+            # Auto mark absent
+            enrolled_students = Enrollment.objects.filter(
+                class_enrolled=session.class_ref
+            ).values_list('student', flat=True)
+
+            already_present = AttendanceRecord.objects.filter(
+                session=session
+            ).values_list('student', flat=True)
+
+            absent_students = set(enrolled_students) - set(already_present)
+            for student_id in absent_students:
+                absent_student = Student.objects.get(id=student_id)
+                AttendanceRecord.objects.create(
+                    session=session,
+                    student=absent_student,
+                    device=None,
+                    status='absent',
+                    original_status='absent',
+                    signature=''
+                )
+
         async_to_sync(channel_layer.group_send)(
-            f'session_{session_id}',
+            f'session_{session.id}',
             {
                 'type': 'attendance_update',
-                'total_present': total_present,
+                'total_present': present_count,
+                'auto_stopped': auto_stopped,
             }
         )
 
