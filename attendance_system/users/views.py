@@ -134,24 +134,38 @@ class DeviceEnrollView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Check if student already has a device enrolled
-        existing_device = Device.objects.filter(student=student,  is_active=True).first()
+        # Get the currently logged-in student's existing active device
+        student_device = Device.objects.filter(student=student, is_active=True).first()
 
-        if existing_device:
-            # Re-enrollment: check hardware ID matches
-            if existing_device.device_fingerprint != device_fingerprint:
-                return Response(
-                    {'error': 'This account is registered to a different device. Contact admin.'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-            # Same device → update public key
-            existing_device.public_key = public_key_str
-            existing_device.save()
+        # Check if student already has a device enrolled
+        fingerprint_device = Device.objects.filter(device_fingerprint=device_fingerprint, is_active=True).first()
+
+        # Same student AND same physical device
+        if student_device and student_device.device_fingerprint == device_fingerprint:
+            student_device.public_key = public_key_str
+            student_device.save(update_fields=['public_key'])
+
             return Response({
                 'message': 'Device re-enrolled successfully',
-                'device_fingerprint': existing_device.device_fingerprint,
-                'enrolled_at': existing_device.registered_at,
+                'device_fingerprint': student_device.device_fingerprint,
+                'enrolled_at': student_device.registered_at,
             }, status=status.HTTP_201_CREATED)
+
+
+        # Student already has a different device
+        if student_device:
+            return Response(
+                {'error': 'Your account is already registered to another device.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+
+        # This physical device belongs to another student
+        if fingerprint_device:
+            return Response(
+                {'error': 'This device is registered to a different student. Contact admin.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         # First enrollment → create new device
         serializer = DeviceEnrollSerializer(
