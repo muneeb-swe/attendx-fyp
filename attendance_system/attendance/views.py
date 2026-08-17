@@ -69,7 +69,6 @@ class GenerateQRView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Close any existing active session
         # Discard any unsubmitted sessions for this teacher
         stale_sessions = Session.objects.filter(
             teacher=teacher,
@@ -83,13 +82,20 @@ class GenerateQRView(APIView):
         qr_token = str(uuid.uuid4())
         expires_at = timezone.now() + timedelta(seconds=5)
 
+        expected_count = request.data.get('expected_count')
+
+        if expected_count is not None:
+            expected_count = int(expected_count)
+
         # Create session
         session = Session.objects.create(
             class_ref=class_obj,
             teacher=teacher,
             qr_token=qr_token,
             expires_at=expires_at,
-            is_active=True
+            is_active=True,
+            expected_count=expected_count,
+            present_count=0,
         )
 
         # Store QR token history
