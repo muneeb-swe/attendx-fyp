@@ -193,16 +193,20 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
       // Only manually stopped sessions need the API call.
       if (!automatic) {
         final result = await ApiService.stopSession(_sessionId);
-        if (result['status'] == 200 && mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            '/attendance_review',
-            arguments: {
-              'session_id': _sessionId,
-              'class_info': _classInfo
-            },
-          );
+        if (result['status'] != 200) {
+          throw Exception('Failed to stop session');
         }
+      }
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/attendance_review',
+          arguments: {
+            'session_id': _sessionId,
+            'class_info': _classInfo
+          },
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -210,7 +214,9 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error stopping session')),
+          const SnackBar(
+            content: Text('Error stopping session')
+          ),
         );
       }
     }
