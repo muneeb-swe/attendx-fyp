@@ -259,7 +259,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                     final controller = TextEditingController();
 
                     return AlertDialog(
-                      backgroundColor: const Color(0xFFF5F2EB),
+                      backgroundColor: Colors.white,
                       surfaceTintColor: Colors.transparent,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(4),
@@ -307,8 +307,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                           child: const Text(
                             'SKIP',
                             style: TextStyle(
-                              color: Colors.white,
-                              backgroundColor: Color(0xFFFF5C38),
+                              color: Colors.black,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
