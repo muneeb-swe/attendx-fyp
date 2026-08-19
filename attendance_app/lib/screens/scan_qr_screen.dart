@@ -36,7 +36,6 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
     if (barcode.rawValue == null) return;
 
     final qrData = barcode.rawValue!;
-    final scanTimestamp = DateTime.now().millisecondsSinceEpoch;
 
     // QR format: session_id:qr_token
     final parts = qrData.split(':');
@@ -56,11 +55,27 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
     setState(() {
       _isProcessing = true;
       _statusMessage = 'QR Detected!';
-      _statusSubMessage = 'Verifying biometric...';
+            _statusSubMessage = 'Confirming with server...';
     });
 
     // Stop scanner
     _scannerController.stop();
+
+  String scanToken;
+  try {
+    final regResult = await ApiService.registerScan(
+      sessionId: sessionId,
+      qrToken: qrToken,
+    );
+    if (regResult['status'] != 201) {
+      _showError(regResult['data']['error'] ?? 'QR code has expired. Please rescan.');
+      return;
+    }
+      scanToken = regResult['data']['scan_token'];
+    } catch (e) {
+      _showError('Connection error. Please try again.');
+      return;
+    }
 
     setState(() {
     _statusMessage = 'Authenticating...';
@@ -88,10 +103,8 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
     // Step 3: Send to server
     try {
       final result = await ApiService.markAttendance(
-      sessionId: sessionId,
-      qrToken: qrToken,
-      signature: signature,
-      scanTimestamp: scanTimestamp,
+        scanToken: scanToken,
+        signature: signature,
     );
 
       if (result['status'] == 201) {
