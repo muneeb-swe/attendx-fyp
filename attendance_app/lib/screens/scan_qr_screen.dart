@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:local_auth/local_auth.dart';
 import '../services/api_service.dart';
 import '../services/crypto_service.dart';
 
@@ -13,7 +12,6 @@ class ScanQRScreen extends StatefulWidget {
 
 class _ScanQRScreenState extends State<ScanQRScreen> {
   final MobileScannerController _scannerController = MobileScannerController();
-  final LocalAuthentication _localAuth = LocalAuthentication();
 
   bool _isProcessing = false;
   bool _scanComplete = false;

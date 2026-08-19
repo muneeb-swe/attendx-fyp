@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import 'package:flutter/services.dart';
 
 class TeacherHomeScreen extends StatefulWidget {
   const TeacherHomeScreen({super.key});
@@ -252,34 +253,86 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                 int? expectedCount;
 
                 // Ask teacher for expected count
-                await showDialog(
+                final proceed =await showDialog<bool>(
                   context: context,
                   builder: (context) {
                     final controller = TextEditingController();
 
                     return AlertDialog(
-                      title: const Text('Start Attendance'),
-                      content: TextField(
-                        controller: controller,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Expected students',
-                          hintText: 'e.g. 30',
+                      backgroundColor: const Color(0xFFF5F2EB),
+                      surfaceTintColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      title: const Text(
+                        'Start Attendance',
+                        style: TextStyle(
+                          color: Color(0xFF0A0A0F),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        content: TextField(
+                          controller: controller,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          style: const TextStyle(
+                            color: Color(0xFF0A0A0F),
+                          ),
+                          decoration: InputDecoration(
+                            labelText: 'Expected students',
+                            hintText: 'e.g. 30',
+                            labelStyle: const TextStyle(
+                              color: Color(0xFF8A8A9A),
+                            ),
+                            hintStyle: const TextStyle(
+                              color: Color(0xFF8A8A9A),
+                            ),
+                            enabledBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Color(0xFFE0DDD5),
+                            ),
+                          ),
+                          focusedBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Color(0xFF00C896),
+                              width: 2,
+                            ),
+                          ),
                         ),
                       ),
                       actions: [
                         TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Skip'),
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text(
+                            'SKIP',
+                            style: TextStyle(
+                              color: Color(0xFF8A8A9A),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                         ElevatedButton(
                           onPressed: () {
                             if (controller.text.isNotEmpty) {
                               expectedCount = int.tryParse(controller.text);
                             }
-                            Navigator.pop(context);
+                            Navigator.pop(context, true);
                           },
-                          child: const Text('Start'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0A0A0F),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          child: const Text(
+                            'START',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                         ),
                       ],
                     );
@@ -287,6 +340,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                 );
 
                 if (!mounted) return;
+                if (proceed != true) return;
 
                 Navigator.pushNamed(
                   context,

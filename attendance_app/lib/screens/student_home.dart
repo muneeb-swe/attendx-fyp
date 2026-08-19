@@ -20,8 +20,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   bool _isLoading = true;
   bool _keystoreKeyExists = false;
   bool _isDeviceMismatch = false;
-  String _errorMessage = '';
-  String _statusMessage = '';
 
   @override
   void initState() {
