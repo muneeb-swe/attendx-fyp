@@ -191,19 +191,48 @@ class DeviceEnrollView(APIView):
 class DeviceStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def post(self, request):
         try:
             student = Student.objects.get(user=request.user)
-            device = Device.objects.get(student=student, is_active=True)
-            return Response({
-                'enrolled': True,
-                'device_fingerprint': device.device_fingerprint,
-                'enrolled_at': device.registered_at,
-                'is_active': device.is_active,
-            })
+            device_fingerprint = request.data.get('device_fingerprint', '')
+            # Get the currently logged-in student's existing active device
+            student_device = Device.objects.filter(student=student, is_active=True).first()
+            fingerprint_device = Device.objects.filter(device_fingerprint=device_fingerprint, is_active=True).first()
+
+            if fingerprint_device and fingerprint_device.student == student:
+                
+                return Response({
+                    'enrolled': True,
+                    'status': 'enrolled',
+                    'message': 'Student and device matched.',
+                    }, status=status.HTTP_200_OK)
+            
+            # This physical device belongs to another student
+            if fingerprint_device:
+                return Response(
+                    {
+                        'enrolled': False,
+                        'status': 'device mismatch',
+                        'error': 'This device is registered to a different student. Contact admin.'
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+                
+            # Student already has a different device
+            if student_device:
+                return Response(
+                    {
+                        'enrolled': False,
+                        'status': 'device mismatch',
+                        'error': 'Your account is already registered to another device.'
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
         except (Student.DoesNotExist, Device.DoesNotExist):
             return Response({
-                'enrolled': False
+                'enrolled': False,
+                'status': 'not enrolled'
             })
         
 class VerifyTokenView(APIView):
