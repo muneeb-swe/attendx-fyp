@@ -388,6 +388,7 @@ class SubmitAttendanceView(APIView):
     
 class MarkAttendanceView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_scope = 'mark_attendance'
 
     def post(self, request):
         # Step 1: Only students can mark attendance

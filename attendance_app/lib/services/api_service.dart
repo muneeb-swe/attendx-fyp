@@ -77,38 +77,6 @@ class ApiService {
     };
   }
 
-  // REGISTER
-  static Future<Map<String, dynamic>> register({
-    required String username,
-    required String password,
-    required String firstName,
-    required String lastName,
-    required String phone,
-    required String rollNumber,
-    required String department,
-    required String batch,
-  }) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/register/'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'username': username,
-        'password': password,
-        'first_name': firstName,
-        'last_name': lastName,
-        'phone': phone,
-        'roll_number': rollNumber,
-        'department': department,
-        'batch': batch,
-      }),
-    );
-
-    return {
-      'status': response.statusCode,
-      'data': jsonDecode(response.body),
-    };
-  }
-
   // ENROLL DEVICE
   static Future<Map<String, dynamic>> enrollDevice({
     required String publicKey,

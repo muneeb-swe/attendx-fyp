@@ -1,26 +1,22 @@
-
-# Python / Django
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.env
-db.sqlite3
+# Miscellaneous
+*.class
 *.log
-attendance_system/staticfiles/
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
 
-# Flutter
-attendance_app/.dart_tool/
-attendance_app/build/
-attendance_app/.flutter-plugins
-attendance_app/.flutter-plugins-dependencies
-attendance_app/.packages
-attendance_app/pubspec.lock
-
-# Android
-attendance_app/android/.gradle/
-attendance_app/android/local.properties
-attendance_app/android/key.properties
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
 
 # VS Code
 .vscode/
@@ -28,3 +24,37 @@ attendance_app/android/key.properties
 # Windows
 Thumbs.db
 Desktop.ini
+
+# ===== Python / Django (attendance_system/) =====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.*
+!.env.example
+db.sqlite3
+*.log
+attendance_system/staticfiles/
+attendance_system/media/
+venv/
+.venv/
+env/
+*.egg-info/
+
+# ===== Flutter (attendance_app/) =====
+# Note: attendance_app/ has its own .gitignore (Flutter-generated) that
+# already covers .dart_tool/, build/, plugin files, etc. — this section
+# only adds things that generator doesn't cover.
+attendance_app/pubspec.lock
+
+# Android signing — never commit these
+attendance_app/android/.gradle/
+attendance_app/android/local.properties
+attendance_app/android/key.properties
+attendance_app/android/**/*.jks
+attendance_app/android/**/*.keystore
+
+# iOS signing — never commit these
+attendance_app/ios/**/*.mobileprovision
+attendance_app/ios/**/*.p12

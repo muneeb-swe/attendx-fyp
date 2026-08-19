@@ -25,6 +25,7 @@ def get_tokens_for_user(user):
 
 
 class LoginView(APIView):
+    throttle_scope = 'login'
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -72,32 +73,6 @@ class LoginView(APIView):
                 pass
 
         return Response(response_data, status=status.HTTP_200_OK)
-
-
-class RegisterView(APIView):
-
-    def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
-
-        if not serializer.is_valid():
-            return Response(
-                serializer.errors,
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        user = serializer.save()
-        tokens = get_tokens_for_user(user)
-
-        return Response({
-            'access_token': tokens['access'],
-            'refresh_token': tokens['refresh'],
-            'role': user.role,
-            'name': f"{user.first_name} {user.last_name}",
-            'username': user.username,
-            'roll_number': user.student.roll_number,
-            'department': user.student.department,
-            'batch': user.student.batch,
-        }, status=status.HTTP_201_CREATED)
 
 
 class DeviceEnrollView(APIView):
