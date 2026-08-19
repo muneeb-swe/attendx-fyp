@@ -16,27 +16,20 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   String _name = '';
   String _rollNumber = '';
   String _department = '';
-  bool _deviceEnrolled = false;
+  String _deviceStatus = '';
   bool _isLoading = true;
   bool _keystoreKeyExists = false;
   bool _isDeviceMismatch = false;
+  String _errorMessage = '';
+  String _statusMessage = '';
 
   @override
   void initState() {
     super.initState();
     _loadUserInfo();
     _checkDeviceStatus();
-    _checkKeystoreKey();
-    _checkDeviceMismatch();
   }
 
-  Future<void> _checkDeviceMismatch() async {
-  final prefs = await SharedPreferences.getInstance();
-  final mismatch = prefs.getBool('device_mismatch') ?? false;
-  setState(() {
-    _isDeviceMismatch = mismatch;
-  });
-}
 
   Future<void> _checkKeystoreKey() async {
   final hasKey = await CryptoService.hasKeys();
@@ -56,10 +49,22 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   Future<void> _checkDeviceStatus() async {
     try {
-      final result = await ApiService.getDeviceStatus();
+      // Get device fingerprint
+      String deviceFingerprint = 'unknown-device';
+      try {
+        deviceFingerprint = await CryptoService.getDeviceFingerprint();
+      } catch (e) {
+        // Use fallback on non-Android devices
+        deviceFingerprint = 'web-test-device';
+      }
+      final result = await ApiService.getDeviceStatus(deviceFingerprint: deviceFingerprint,);
       setState(() {
-        _deviceEnrolled = result['data']['enrolled'] ?? false;
+        _deviceStatus = result['data']['status'];
+        _isDeviceMismatch = _deviceStatus == 'device mismatch';
         _isLoading = false;
+        if (_deviceStatus == 'enrolled') {
+          _checkKeystoreKey();
+        }
       });
     } catch (e) {
       setState(() {
@@ -184,7 +189,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     const SizedBox(height: 24),
 
                     // Device enrollment warning
-                    if (!_deviceEnrolled)
+                    if (_deviceStatus == 'not enrolled')
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
@@ -228,7 +233,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                         onTap: () async {
                                           await Navigator.pushNamed(context, '/enroll_device');
                                           _checkDeviceStatus();
-                                          _checkDeviceMismatch();
                                         },
                                         child: const Text(
                                           'Enroll Device →',                                  style: TextStyle(
@@ -266,7 +270,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       title: 'Scan QR Code',
                       subtitle: 'Mark your attendance',
                       color: const Color(0xFF00C896),
-                      onTap: _deviceEnrolled
+                      onTap: _deviceStatus == 'enrolled'
                           ? () =>
                               Navigator.pushNamed(context, '/scan_qr')
                           : () {
@@ -299,39 +303,35 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       icon: Icons.phone_android,
                       title: _isDeviceMismatch
                         ? 'Device Mismatch'
-                        : (!_keystoreKeyExists && _deviceEnrolled)
+                        : (!_keystoreKeyExists && _deviceStatus == 'enrolled')
                           ? 'Re-enroll Device'
-                          : _deviceEnrolled
+                          : _deviceStatus == 'enrolled'
                             ? 'Device Enrolled ✓'
                             : 'Enroll Device',
                     subtitle: _isDeviceMismatch
                         ? 'Contact admin to reset your device'
-                        : (!_keystoreKeyExists && _deviceEnrolled)
+                        : (!_keystoreKeyExists && _deviceStatus == 'enrolled')
                           ? 'Reinstalled app? Re-register your device'
-                          : _deviceEnrolled
+                          : _deviceStatus == 'enrolled'
                             ? 'Your device is registered'
                             : 'Register your phone for attendance',
                     color: _isDeviceMismatch
                         ? const Color(0xFFFF5C38)
-                        : _deviceEnrolled
+                        : _deviceStatus == 'enrolled'
                           ? const Color(0xFF8A8A9A)
                           : const Color(0xFFFF5C38),
                       onTap: _isDeviceMismatch
                         ? null
-                        : (!_keystoreKeyExists && _deviceEnrolled)
+                        : (!_keystoreKeyExists && _deviceStatus == 'enrolled')
                           ? () async {
                               await Navigator.pushNamed(context, '/enroll_device');
                               _checkDeviceStatus();
-                              _checkKeystoreKey();
-                              _checkDeviceMismatch();
                             }
-                          : _deviceEnrolled
+                          : _deviceStatus == 'enrolled'
                             ? null
                             : () async {
                                 await Navigator.pushNamed(context, '/enroll_device');
                                 _checkDeviceStatus();
-                                _checkKeystoreKey();
-                                _checkDeviceMismatch();
                               },
                     ),
                   ],

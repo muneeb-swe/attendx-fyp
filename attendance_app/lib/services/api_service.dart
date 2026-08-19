@@ -143,9 +143,6 @@ class ApiService {
         }),
     );
 
-    print('Generate QR status: ${response.statusCode}');
-    print('Generate QR response: ${response.body}');
-
     return {
       'status': response.statusCode,
       'data': jsonDecode(response.body),
@@ -254,11 +251,14 @@ class ApiService {
   }
 
   // GET DEVICE STATUS
-  static Future<Map<String, dynamic>> getDeviceStatus() async {
+  static Future<Map<String, dynamic>> getDeviceStatus({
+    required String deviceFingerprint,
+    }) async {
     final headers = await getHeaders();
-    final response = await http.get(
+    final response = await http.post(
       Uri.parse('$baseUrl/auth/device/status/'),
       headers: headers,
+      body: jsonEncode({'device_fingerprint': deviceFingerprint}),
     );
 
     return {

@@ -42,7 +42,7 @@ void initState() {
     });
 
     try {
-      /// Allow re-enrollment — server handles hardware ID check
+      // Allow re-enrollment — server handles hardware ID check
 
       setState(() {
         _statusMessage = 'Getting device info...';
@@ -56,10 +56,6 @@ void initState() {
         // Use fallback on non-Android devices
         deviceFingerprint = 'web-test-device';
       }
-
-      setState(() {
-        _statusMessage = 'Generating security keys...';
-      });
 
       setState(() {
         _statusMessage = 'Generating security keys...';
