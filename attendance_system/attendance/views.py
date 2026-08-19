@@ -213,6 +213,12 @@ class RegisterScanView(APIView):
         if qr_token != session.qr_token:
             return Response({'error': 'QR code has expired. Please rescan.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        if timezone.now() > session.expires_at:
+            return Response(
+                {'error': 'QR code has expired. Please rescan.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         payload = f"{session_id}:{qr_token}"
         scan_token = scan_signer.sign(payload)
 

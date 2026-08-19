@@ -359,7 +359,7 @@ Future<bool> _onWillPop() async {
                                   color: const Color(0xFF0A0A0F),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: _qrImage.isNotEmpty
+                                child: _qrImage.isNotEmpty && !_isRefreshing
                                     ? Image.memory(
                                         base64Decode(
                                           _qrImage.replaceFirst(
