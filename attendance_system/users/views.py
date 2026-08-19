@@ -10,7 +10,6 @@ import base64
 from .models import User, Student, Teacher, Device
 from .serializers import (
     LoginSerializer,
-    RegisterSerializer,
     DeviceEnrollSerializer,
 )
 
