@@ -307,7 +307,8 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                           child: const Text(
                             'SKIP',
                             style: TextStyle(
-                              color: Color(0xFF8A8A9A),
+                              color: Colors.white,
+                              backgroundColor: Color(0xFFFF5C38),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -320,7 +321,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                             Navigator.pop(context, true);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0A0A0F),
+                            backgroundColor: const Color(0xFF00C896),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(4),
