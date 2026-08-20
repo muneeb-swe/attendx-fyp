@@ -297,6 +297,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     const SizedBox(height: 12),
 
                     // Enroll device button
+                    if (_isMobile)
                     _buildActionCard(
                       icon: Icons.phone_android,
                       title: _isDeviceMismatch
