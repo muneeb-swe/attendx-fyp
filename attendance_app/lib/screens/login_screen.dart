@@ -55,6 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // Navigate based on role
         if (data['role'] == 'student') {
           await prefs.setString('roll_number', data['roll_number'] ?? '');
+          await prefs.setString('department', data['department'] ?? '');
           Navigator.pushReplacementNamed(context, '/student_home');
         } else if (data['role'] == 'teacher') {
             await prefs.setString('employee_id', data['employee_id'] ?? '');
