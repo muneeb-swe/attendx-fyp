@@ -269,31 +269,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 16),
 
-              // Register link
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    'New student? ',
-                    style: TextStyle(color: Color(0xFF8A8A9A)),
-                  ),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/register');
-                      },
-                      child: const Text(
-                        'Register here',
-                        style: TextStyle(
-                          color: Color(0xFF00C896),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
         ),
