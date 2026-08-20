@@ -17,7 +17,7 @@ See the "Getting started" section in [README.md](README.md) for backend and mobi
 
 ## Pull requests
 
-1. Fork the repo and create a branch from `main` (e.g. `fix/device-status-endpoint`).
+1. Create a branch from `main` (e.g. `fix/device-status-endpoint`) and open a PR from it.
 2. Keep changes focused — one logical fix or feature per PR.
 3. For backend changes, include/update Django migrations if models change (`python manage.py makemigrations`).
 4. For Flutter changes, run `flutter analyze` before opening the PR.

@@ -2,35 +2,145 @@
 
 All notable changes to AttendX are documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates below are placeholders — update them to match your actual commit/release dates before publishing.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates reflect actual commit history.
 
-## [Unreleased]
+## [Unreleased] — 2026-08-20
+
+### Fixed
+- Removed Register here link from login screen
+- Student department not displaying correctly on the student side.
+- Removed the device-enroll button from the web view of the app (device enrollment is an Android/iOS Keystore/Keychain-bound flow and doesn't make sense on web — the button was a leftover from the browser-view addition).
+
+## [2026-08-19]
+
+### Changed
+- Replaced the `QRTokenHistory`-based validity model with a signed, time-limited `scan_token` (Django `TimestampSigner`): validity is now checked live at scan-register time via a new `register-scan/` endpoint, and the token is verified again at `mark/` time. The `QRTokenHistory` model and its table were deleted.
+- Scan time is now captured and checked server-side in real time rather than relying on a client-supplied timestamp reconciled against historical QR windows.
+- QR code is now hidden in the UI while it's in a refreshing state, avoiding a visible stale/expired code between rotations.
+- Added a server-side QR expiry check as a second guard alongside the live token check.
+- Optimized device-enrollment detection logic (two follow-up commits refining the same change).
+- Restyled the "expected/total present" input dialog and changed alert box button colors (two passes).
+
+### Removed
+- Removed the self-service student registration process entirely — account creation is now admin-provisioned only, matching the documented security model. Cleaned up related unused imports afterward.
+
+### Security
+- Added rate limiting on the login endpoint.
+- Added standard GitHub community files (README/CONTRIBUTING/SECURITY/LICENSE, etc.).
 
 ### Fixed
 - `DeviceStatusView` / `getDeviceStatus()` — the device fingerprint was never actually transmitted to the server (accepted as a Flutter parameter but not sent on the `GET` request, and read from an empty `request.data` on a bodyless GET on the backend). Converted the endpoint to `POST` with a JSON body so the fingerprint reaches the server, and added a fallthrough response for the "not yet enrolled, no conflicts" case that previously fell through to an unhandled `None` return.
 - Student home screen now correctly distinguishes three device states — enrolled, needs re-enrollment (server has a device on record but the local Keystore key is missing, e.g. after a reinstall), and device mismatch (fingerprint registered to a different student) — instead of collapsing all non-enrolled cases into a single generic "Enroll Device" prompt.
 
-## [Recorded history]
+## [2026-08-17]
 
-Reconstructed from development notes; consolidate into dated releases as appropriate.
+### Added
+- Optional "expected/total present" count on session creation; session now auto-stops once the count is reached.
+- Error handling for the case where the same physical device is used by a different student mid-session.
 
-### Backend (`attendance_system`)
-- Added `QRTokenHistory` model to track each rotated QR token's validity window, replacing an earlier `previous_qr_token`-based approach, to prevent replay of expired tokens.
-- Implemented hardware-signature verification for attendance marking (RSA PKCS1v15 + SHA-256), supporting both PEM (for manual/Postman testing) and DER (Android Keystore) public key formats.
-- Added atomic, conditional `present_count` increments (`UPDATE ... WHERE ... RETURNING`) to safely enforce `expected_count` caps under concurrent scans, with automatic session stop when the cap is reached.
-- Added device enrollment constraints: one active device per student, one active student per device fingerprint, with a defined re-enrollment path when the same student re-registers the same physical device.
-- Added real-time attendance updates and history notifications over Django Channels (WebSocket group sends on mark, submit, and discard).
-- Added manual attendance override by teachers (`EditAttendanceView`), with modification flagged and visible to students rather than silently overwritten.
-- Added session lifecycle handling: stop (auto-marks unmarked enrolled students absent), submit (locks the session), discard (removes an unsubmitted session and notifies affected students).
+### Fixed
+- Fixed a navigation issue that occurred on auto session-stop.
+- Fixed issues with QR generation (two follow-up commits).
+- Optimized live-count updates by removing a `.count()` database query that was previously run on every successful attendance mark.
 
-### Mobile app (`attendance_app`)
-- Implemented Android Keystore-backed key generation and signing via a native `MethodChannel`, keeping private keys off the Dart/application layer entirely.
-- Implemented QR scanning flow with live biometric prompt integrated into the signing step.
-- Added splash-screen auto-login via stored token verification.
-- Added device enrollment screen and student home screen device-status handling (enrolled / needs re-enrollment / mismatch).
-- Added attendance history and session review screens for students and teachers respectively.
-- Scaffolded iOS support (Keychain helper, `AppDelegate` method channel) alongside the primary Android implementation.
-- Configured backend tunneling for local development/testing via portmap.io prior to production deployment.
+## [2026-08-14 – 2026-08-15]
 
-### Infrastructure
-- Deployed backend to Railway with ASGI (Daphne) for WebSocket support.
+### Added
+- Added security headers (multiple passes) and CSRF trusted origins.
+- Enforced one active device per student at the database level (`is_active` partial unique constraint).
+
+### Fixed
+- Fixed QR code validity window, scan-time handling, teacher authorization checks, and WebSocket authentication.
+- Removed a hardcoded fallback `SECRET_KEY`, requiring it to come from the environment.
+- Debugged and fixed a live-count WebSocket issue (including a temporary print-statement debugging pass).
+- Fixed a `QRTokenHistory` scan-lookup issue (superseded by the Aug 19 removal of the model).
+
+### Removed
+- Removed dead code left over from the earlier `previous_qr_token` approach.
+
+## [2026-08-09 – 2026-08-12]
+
+### Added
+- `daphne` added to `requirements.txt` for ASGI/WebSocket support in production.
+- `pillow` added to `requirements.txt` (required by the `qrcode` image generation).
+
+### Changed
+- Prepared and deployed the backend for hosting on Render, then migrated deployment to Railway.
+- Fixed the deployed Vercel frontend URL and added it to `CORS_ALLOWED_ORIGINS`.
+
+## [2026-07-23 – 2026-07-30]
+
+### Added
+- Live attendance updates and student history over Django Channels WebSockets, replacing HTTP polling.
+- Search feature on the teacher's attendance review screen.
+
+### Fixed
+- Present/absent student ordering on the attendance review screen.
+- An auto-login issue, resolved alongside the WebSocket rollout on the history screen.
+
+## [2026-04-02]
+
+### Fixed
+- Hardware-level biometric signing error.
+- Scan-time capturing logic.
+
+### Removed
+- Removed the grace period for the previous QR token (an early precursor to the later `QRTokenHistory`/scan-token rework).
+
+## [2026-03-29]
+
+### Added
+- Splash-screen token check that logs the user out automatically once the stored token passes its 30-day expiry.
+
+## [2026-03-25]
+
+### Security
+- Enforced hardware-level biometric authentication for signing, blocking PIN/password fallback so only fingerprint or face unlock can authorize a signature.
+
+## [2026-03-22]
+
+### Added
+- Browser (web) view of the app.
+
+## [2026-03-19]
+
+### Changed
+- Reduced QR code rotation/expiry time to 5 seconds.
+
+## [2026-03-15]
+
+### Added
+- iOS support scaffolding (Keychain-backed signing, `AppDelegate` method channel).
+- Device mismatch detection and auto-refreshing attendance history.
+
+### Fixed
+- App icons — new "AX" monogram icon applied across all platforms.
+
+## [2026-03-14]
+
+### Added
+- Auto-login on app start, using stored token verification (added, then re-verified working in a follow-up commit).
+
+### Fixed
+- QR scanning time window fixed to exclude the biometric prompt duration from the countdown.
+- Attendance status handling: sessions now show "pending" and "modified" states correctly in history, and attendance only finalizes once the teacher explicitly submits.
+
+## [2026-03-13]
+
+### Added
+- Re-enrollment feature with hardware ID (device fingerprint) verification.
+
+### Changed
+- Renamed the project to AttendX.
+- Switched local backend tunneling to a portmap.io URL.
+
+### Fixed
+- QR timer sync/latency issue seen on the real server under slow internet conditions.
+
+## [2026-03-11] — Initial commit
+
+### Added
+- Initial commit of the AttendX FYP project (Flutter app + Django backend scaffold).
+
+### Removed
+- Removed a one-off `generate_icon.py` utility script no longer needed after icon setup.

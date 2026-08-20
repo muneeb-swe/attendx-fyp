@@ -8,11 +8,11 @@ This is an academic project, not a production service handling real institutiona
 
 ## What the system protects against
 
-- **Casual QR sharing / screenshotting**: QR tokens rotate every 5 seconds and are recorded server-side (`QRTokenHistory`). A screenshotted or forwarded QR code is very likely to be expired by the time it's used elsewhere.
+- **Casual QR sharing / screenshotting**: QR tokens rotate every 5 seconds, and a scan is only accepted if it matches the session's current live token at the moment it's registered with the server. A screenshotted or forwarded QR code is very likely to be expired by the time it's used elsewhere.
 - **Marking attendance without the registered device**: Attendance requires an RSA signature produced by a key generated inside the Android Keystore (`PURPOSE_SIGN`, `setUserAuthenticationRequired(true)`). The private key is non-exportable and never leaves the device; signing operations require a fresh biometric check at the OS level.
 - **Forged or self-generated signatures**: A request submitted with a fabricated signature (e.g. bypassing the app entirely and calling the API directly with a random key) will always fail verification in `MarkAttendanceView`, since the server checks the signature against the specific public key on file for that student's enrolled device.
 - **One account, one device (and vice versa)**: Database-level uniqueness constraints ensure a student can have only one active enrolled device, and a physical device fingerprint can only be actively bound to one student account at a time.
-- **Replayed or stale scans against an old QR window**: Each scan is checked against the specific `QRTokenHistory` window it claims to belong to, not just "is the session still open."
+- **Replayed or stale scans**: A scan is validated live against the session's current QR token at registration time (`register-scan/`), which issues a short-lived, signed `scan_token` (max age 180 seconds). That token — not just "is the session still open" — is what's checked again when attendance is actually marked, so a token can't be replayed after it expires or against a different session.
 - **Editing attendance after the fact, invisibly**: Manual teacher overrides are flagged (`is_modified`) and visible to students in their history rather than silently overwriting the original record.
 - **Credential brute-forcing on login**: `/api/auth/login/` is throttled to 5 requests/minute per IP address (`ScopedRateThrottle`, DRF). This doesn't make password guessing impossible, but it makes scripted dictionary attacks impractically slow.
 - **Scripted request flooding against attendance marking**: `/api/attendance/mark/` is throttled to 5 requests/minute per authenticated user. This doesn't (and can't) stop a legitimate account from *attempting* fabricated requests, but it caps how much server work (DB queries, RSA verification attempts) one account can trigger per minute, limiting the endpoint's use as a resource-exhaustion vector.
@@ -32,6 +32,6 @@ This is an academic project, not a production service handling real institutiona
 ## Design notes for reviewers
 
 - Signatures are verified using RSA PKCS1v15 with SHA-256 over the exact string `"{session_id}:{qr_token}"`.
-- QR token validity windows are stored and checked server-side; the client-supplied scan timestamp is used only to look up which historical window a token belonged to, not as the sole basis for authorization — the session's live `is_active` state and signature validity are the binding server-side checks.
+- QR token validity is checked live, server-side, at scan-registration time (`register-scan/`) — the request must present the session's current `qr_token` before it's accepted. A successful check issues a signed, time-limited `scan_token` (Django `TimestampSigner`, 180-second max age), which is unsealed and re-checked when attendance is actually marked (`mark/`). The session's live `is_active` state and signature validity are the binding server-side checks at that final step.
 - Attendance-count limits (`expected_count`) are enforced with an atomic, conditional `UPDATE ... RETURNING` query to avoid race conditions when many students scan in quick succession.
 - Account creation is administrator-provisioned, not self-service, removing open account-creation abuse as a concern.

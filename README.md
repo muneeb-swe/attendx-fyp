@@ -5,10 +5,10 @@ AttendX is a biometric-secured, QR-based attendance system built as a Final Year
 ## How it works
 
 1. A teacher starts a session for a class. The server generates a QR code encoding `session_id:qr_token`.
-2. The QR code **rotates every 5 seconds** — each token is only valid for the exact window it was issued in, tracked server-side in a `QRTokenHistory` table.
-3. A student scans the QR with the app. Scanning triggers a biometric prompt (fingerprint/face) tied to a hardware-backed key pair stored in the **Android Keystore** — the private key never leaves the device.
-4. The app signs `session_id:qr_token` with that hardware key and sends the signature to the server.
-5. The server verifies the signature against the student's registered public key, checks the token was valid at scan time, confirms the student is enrolled in the class, and marks attendance.
+2. The QR code **rotates every 5 seconds** — a scan is only accepted if it matches the session's current live token, checked server-side at the moment of scanning.
+3. A student scans the QR with the app. The app immediately registers the scan with the server, which validates the token is still current and returns a short-lived, signed `scan_token`.
+4. The student then completes a biometric prompt (fingerprint/face) tied to a hardware-backed key pair stored in the **Android Keystore** — the private key never leaves the device. The app signs `session_id:qr_token` with that hardware key.
+5. The app sends the `scan_token` and signature to the server. The server verifies the signature against the student's registered public key, confirms the scan token hasn't expired, confirms the student is enrolled in the class, and marks attendance.
 6. Teachers see attendance update in real time over WebSockets (Django Channels), can manually override individual records, and finally submit/lock the session.
 
 ## Why hardware-bound keys
@@ -56,7 +56,6 @@ Base path: `/api/`
 | Endpoint | Method | Description |
 |---|---|---|
 | `login/` | POST | Authenticate, returns JWT pair |
-| `register/` | POST | Create a student account |
 | `device/enroll/` | POST | Register (or re-register) a device's public key |
 | `device/status/` | POST | Check enrollment status / mismatch for this device |
 | `verify/` | GET | Validate an access token |
@@ -66,14 +65,17 @@ Base path: `/api/`
 |---|---|---|
 | `generate-qr/` | POST | Teacher starts a session, gets first QR |
 | `session/<id>/refresh-qr/` | POST | Rotates the QR token (called every 5s) |
+| `register-scan/` | POST | Student registers a scan against the current QR token, receives a short-lived signed scan token |
 | `session/<id>/stop/` | POST | Stops the session, marks remaining students absent |
 | `session/<id>/attendance/` | GET | Live roster for a session |
 | `record/<id>/edit/` | PATCH | Teacher manual override of a record |
 | `session/<id>/submit/` | POST | Locks attendance for the session |
-| `mark/` | POST | Student submits signed scan to mark present |
+| `mark/` | POST | Student submits signed scan token + signature to mark present |
 | `teacher/classes/` | GET | Classes owned by the logged-in teacher |
 | `student/history/` | GET | Logged-in student's attendance history |
 | `session/<id>/discard/` | DELETE | Discards an unsubmitted session |
+
+> Accounts are admin-provisioned, not self-service — there is no public registration endpoint.
 
 ## Getting started
 
