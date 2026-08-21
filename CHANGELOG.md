@@ -10,10 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - New `DeviceEvent` model (`users` app) — an audit log for device enrollment, re-enrollment, admin enable/disable, and blocked mismatch attempts (fingerprint already taken, student already has a device). Previously these either weren't tracked at all or existed only as a rejected API response that left no trace.
 - `DeviceEnrollView` now writes a `DeviceEvent` on every code path (first enrollment, re-enrollment, both mismatch-rejection cases) instead of just returning an error response.
 - New web admin dashboard at `/dashboard/` (`dashboard` app, previously empty scaffolding), session-authenticated and gated to `role == 'admin'`:
-  - **Overview** — attendance totals, modified-record counts, absent↔present flip counts, signature-verified vs. unsigned counts, device counts, mismatch-attempt counts, recent event feed.
+  - **Overview** — attendance totals, modified-record counts, absent↔present flip counts, and a "present with no signature" count.
+  - **Classes → Sessions → per-student records** — the main transparency tool. Browse by class, then by day/session, and see every student's original status, their signature (expandable, the actual proof they scanned), current status, and whether a teacher changed it. Built specifically to answer attendance disputes ("I marked attendance, the teacher changed it to absent") without needing to query the database by hand.
   - **Devices** — searchable/filterable list of every enrolled device joined to its student; a "students with no device enrolled" view; per-device detail page with a single Enable/Disable action (always logged) and full history for that device.
   - **Event Log** — every `DeviceEvent`, filterable by type and searchable by roll number/fingerprint.
 - Django admin (`/admin/`) also updated in parallel: registered `Device` (with the same Enable/Disable actions and inline history) and a read-only `DeviceEvent` log, plus an `AttendanceRecord` admin with a linked aggregate stats page.
+
+### Fixed
+- The "signature" stat on both the dashboard Overview and the Django admin stats page was counting all records, including absent ones — which never have a signature since the student never scanned, making the stat meaningless. Now scoped to currently-present records only, split into "present with signature" (a real scan) vs. "present with no signature" (added by a teacher's manual edit, no proof behind it).
+- Removed the "Manual override" stat box from both stats views — `status='manual'` is defined as a model choice but never actually set anywhere in the codebase, so it always read 0 and implied a feature that doesn't exist.
 
 ### Security
 - `Device.is_active` is now read-only on the Django admin change form — it can only be changed through the logged Enable/Disable actions (dashboard or admin), never by editing the field directly, closing a gap where the audit log could be silently bypassed.

@@ -34,14 +34,25 @@ Each student may only register **one active device**, and each physical device m
 - `web_socket_channel` — live session updates
 - Native Android Keystore integration via `MethodChannel` for RSA key generation and signing (private key never touches Dart/application code)
 
+## Admin dashboard
+
+A separate web dashboard lives at `/dashboard/` (the `dashboard` app), gated to accounts with `role == 'admin'` and authenticated via Django sessions — independent from the Flutter app's JWT auth and from Django's built-in `/admin/`.
+
+- **Overview** — attendance totals, modified-record counts, absent↔present flip counts, and a "present but no signature" count (records currently marked present with no backing signature — meaning they were set that way by a teacher's manual edit, not a real scan).
+- **Classes → Sessions → per-student records** — the main transparency tool. Pick a class, pick a day/session, and see every student's *original* status (what their device actually reported), their signature if one exists (expandable — this is the cryptographic proof they scanned), and their *current* status with a flag if a teacher changed it afterward. This is what answers a dispute like "I marked attendance and the teacher changed it to absent" — the original signed record stays visible regardless of the current status.
+- **Devices** — every enrolled device joined to its student, searchable/filterable, plus a "students with no device enrolled" view. Enable/disable a device from its detail page (always logged, never a silent field edit).
+- **Event Log** — every device enrollment, re-enrollment, admin enable/disable, and blocked mismatch attempt (e.g. someone trying to enroll a fingerprint already bound to another student), backed by a `DeviceEvent` audit model.
+
+Device *deletion* is intentionally not exposed anywhere (dashboard or Django admin) — `AttendanceRecord.device` uses `on_delete=CASCADE`, so deleting a `Device` row would delete the attendance history signed with it. Disable/enable is the only lifecycle action available.
+
 ## Project structure
 
 ```
 attendx-fyp/
 ├── attendance_system/       # Django backend
 │   ├── attendance/          # Sessions, QR tokens, attendance records
-│   ├── users/                # Auth, students, teachers, device enrollment
-│   ├── dashboard/            # Admin/reporting views
+│   ├── users/                # Auth, students, teachers, device enrollment, device event log
+│   ├── dashboard/            # Admin web dashboard (session-authenticated, role == 'admin')
 │   └── attendance_system/    # Project settings, ASGI/WSGI, routing
 └── attendance_app/           # Flutter app
     ├── lib/screens/           # UI screens (login, QR display, scan, history, enrollment)
