@@ -4,10 +4,18 @@ All notable changes to AttendX are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates reflect actual commit history.
 
-## [Unreleased] — 2026-08-20
+## [2026-08-21]
+
+### Added
+- Django admin now exposes an enrolled-devices view (`/admin/users/device/`) showing each device joined to its student, department, fingerprint, enrollment date, and active/disabled status, with bulk "Enable" / "Disable" actions. Closes the previous gap where releasing a lost or replaced device's binding required a raw DB shell — this is now a couple of clicks in Django admin, though still not a dedicated screen inside the AttendX apps themselves.
+
+### Removed
+- Removed the dead "New student? Register here" link from the login screen — it pointed at a `/register` route/screen that no longer exists after self-service registration was removed on 2026-08-19.
+- Removed the dead admin-login redirect (`role == 'admin'` branch navigating to `/admin_home`) from the login screen — no `/admin_home` route or screen was ever built; admin management happens through Django admin, not the mobile/web app.
+
+## [2026-08-20]
 
 ### Fixed
-- Removed Register here link from login screen
 - Student department not displaying correctly on the student side.
 - Removed the device-enroll button from the web view of the app (device enrollment is an Android/iOS Keystore/Keychain-bound flow and doesn't make sense on web — the button was a leftover from the browser-view addition).
 

@@ -61,9 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
             await prefs.setString('employee_id', data['employee_id'] ?? '');
             await prefs.setString('department', data['department'] ?? '');
             Navigator.pushReplacementNamed(context, '/teacher_home');
-          } else if (data['role'] == 'admin') {
-          Navigator.pushReplacementNamed(context, '/admin_home');
-        }
+          } 
       } else {
         setState(() {
           _errorMessage = result['data']['error'] ?? 'Login failed';
