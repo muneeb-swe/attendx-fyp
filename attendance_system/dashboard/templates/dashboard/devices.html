@@ -1,0 +1,61 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Devices — AttendX Admin{% endblock %}
+{% block content %}
+<h2>Devices</h2>
+
+<form method="get" class="filters">
+  <input type="text" name="q" placeholder="Search roll number, name, fingerprint" value="{{ q }}">
+  <select name="status">
+    <option value="" {% if not status_filter %}selected{% endif %}>All statuses</option>
+    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active only</option>
+    <option value="disabled" {% if status_filter == 'disabled' %}selected{% endif %}>Disabled only</option>
+  </select>
+  <button type="submit" class="btn outline">Filter</button>
+  <a href="?never_enrolled=1{% if q %}&q={{ q }}{% endif %}" class="btn outline">Show students with no device</a>
+</form>
+
+{% if never_enrolled is not None %}
+<div class="card">
+  <h3 style="margin-top:0;">Students with no device enrolled ({{ never_enrolled.count }})</h3>
+  <table>
+    <tr><th>Roll Number</th><th>Name</th><th>Department</th></tr>
+    {% for s in never_enrolled %}
+    <tr><td>{{ s.roll_number }}</td><td>{{ s.user.get_full_name }}</td><td>{{ s.department }}</td></tr>
+    {% empty %}
+    <tr><td colspan="3" style="color:#8A8A9A;">Every student has enrolled a device at least once.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+<div class="card">
+  <table>
+    <tr>
+      <th>Roll Number</th><th>Student</th><th>Department</th>
+      <th>Fingerprint</th><th>Registered</th><th>Status</th><th></th>
+    </tr>
+    {% for d in page_obj %}
+    <tr>
+      <td>{{ d.student.roll_number }}</td>
+      <td>{{ d.student.user.get_full_name }}</td>
+      <td>{{ d.student.department }}</td>
+      <td style="font-family:monospace;font-size:12px;">{{ d.device_fingerprint|truncatechars:28 }}</td>
+      <td>{{ d.registered_at|date:"M j, Y" }}</td>
+      <td>
+        {% if d.is_active %}<span class="badge active">Active</span>
+        {% else %}<span class="badge disabled">Disabled</span>{% endif %}
+      </td>
+      <td><a class="link" href="{% url 'dashboard:device_detail' d.id %}">View &rarr;</a></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="7" style="color:#8A8A9A;">No devices match.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="pagination">
+  {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&status={{ status_filter }}">&larr; Prev</a>{% endif %}
+  Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+  {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}&status={{ status_filter }}">Next &rarr;</a>{% endif %}
+</div>
+{% endblock %}

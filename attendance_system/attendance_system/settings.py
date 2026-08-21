@@ -82,6 +82,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'attendance_system.urls'
+LOGIN_URL = 'dashboard:login'
+
 
 TEMPLATES = [
     {

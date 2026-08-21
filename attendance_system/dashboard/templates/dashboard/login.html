@@ -1,0 +1,27 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Sign in — AttendX Admin{% endblock %}
+{% block content %}
+<div style="max-width:360px;margin:60px auto 0;">
+  <h2 style="text-align:center;">Attend<span style="color:#00C896;">X</span> Admin</h2>
+  {% if messages %}
+    <div class="messages">
+      {% for message in messages %}<div class="msg {{ message.tags }}">{{ message }}</div>{% endfor %}
+    </div>
+  {% endif %}
+  <form method="post" class="card">
+    {% csrf_token %}
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:13px;margin-bottom:4px;">Username</label>
+      <input type="text" name="username" style="width:100%;" required autofocus>
+    </div>
+    <div style="margin-bottom:18px;">
+      <label style="display:block;font-size:13px;margin-bottom:4px;">Password</label>
+      <input type="password" name="password" style="width:100%;" required>
+    </div>
+    <button type="submit" class="btn teal" style="width:100%;">Sign In</button>
+  </form>
+  <p style="text-align:center;color:#8A8A9A;font-size:13px;margin-top:12px;">
+    Admin accounts only.
+  </p>
+</div>
+{% endblock %}

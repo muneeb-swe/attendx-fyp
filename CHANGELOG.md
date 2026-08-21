@@ -7,11 +7,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [2026-08-21]
 
 ### Added
-- Django admin now exposes an enrolled-devices view (`/admin/users/device/`) showing each device joined to its student, department, fingerprint, enrollment date, and active/disabled status, with bulk "Enable" / "Disable" actions. Closes the previous gap where releasing a lost or replaced device's binding required a raw DB shell — this is now a couple of clicks in Django admin, though still not a dedicated screen inside the AttendX apps themselves.
+- New `DeviceEvent` model (`users` app) — an audit log for device enrollment, re-enrollment, admin enable/disable, and blocked mismatch attempts (fingerprint already taken, student already has a device). Previously these either weren't tracked at all or existed only as a rejected API response that left no trace.
+- `DeviceEnrollView` now writes a `DeviceEvent` on every code path (first enrollment, re-enrollment, both mismatch-rejection cases) instead of just returning an error response.
+- New web admin dashboard at `/dashboard/` (`dashboard` app, previously empty scaffolding), session-authenticated and gated to `role == 'admin'`:
+  - **Overview** — attendance totals, modified-record counts, absent↔present flip counts, signature-verified vs. unsigned counts, device counts, mismatch-attempt counts, recent event feed.
+  - **Devices** — searchable/filterable list of every enrolled device joined to its student; a "students with no device enrolled" view; per-device detail page with a single Enable/Disable action (always logged) and full history for that device.
+  - **Event Log** — every `DeviceEvent`, filterable by type and searchable by roll number/fingerprint.
+- Django admin (`/admin/`) also updated in parallel: registered `Device` (with the same Enable/Disable actions and inline history) and a read-only `DeviceEvent` log, plus an `AttendanceRecord` admin with a linked aggregate stats page.
+
+### Security
+- `Device.is_active` is now read-only on the Django admin change form — it can only be changed through the logged Enable/Disable actions (dashboard or admin), never by editing the field directly, closing a gap where the audit log could be silently bypassed.
+- Disabled delete permission in Django admin on `Device`, `Class`, `Enrollment`, `Session`, and `AttendanceRecord`. Several of these cascade-delete attendance history if removed (`AttendanceRecord.device` and `Session` both use `on_delete=CASCADE`), so this closes a real risk of an admin misclick destroying attendance records in production.
+- No device *deletion* exists anywhere (dashboard or Django admin) — only disable/enable. True deletion would require first migrating `AttendanceRecord.device` to `on_delete=SET_NULL`, which hasn't been done.
 
 ### Removed
 - Removed the dead "New student? Register here" link from the login screen — it pointed at a `/register` route/screen that no longer exists after self-service registration was removed on 2026-08-19.
-- Removed the dead admin-login redirect (`role == 'admin'` branch navigating to `/admin_home`) from the login screen — no `/admin_home` route or screen was ever built; admin management happens through Django admin, not the mobile/web app.
+- Removed the dead admin-login redirect (`role == 'admin'` branch navigating to `/admin_home`) from the login screen — no `/admin_home` route or screen was ever built; admin management now happens through the `/dashboard/` web app, not the mobile app.
 
 ## [2026-08-20]
 

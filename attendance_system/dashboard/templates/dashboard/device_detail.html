@@ -1,0 +1,59 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Device — {{ device.student.roll_number }}{% endblock %}
+{% block content %}
+<a class="link" href="{% url 'dashboard:device_list' %}">&larr; All devices</a>
+
+<div class="card" style="margin-top:14px;">
+  <h2 style="margin-top:0;">{{ device.student.roll_number }} — {{ device.student.user.get_full_name }}</h2>
+  <p style="color:#8A8A9A;">{{ device.student.department }} · {{ device.student.batch }}</p>
+  <table style="margin-top:10px;">
+    <tr><th>Fingerprint</th><td style="font-family:monospace;">{{ device.device_fingerprint }}</td></tr>
+    <tr><th>Registered</th><td>{{ device.registered_at|date:"M j, Y — H:i" }}</td></tr>
+    <tr>
+      <th>Status</th>
+      <td>
+        {% if device.is_active %}<span class="badge active">Active</span>
+        {% else %}<span class="badge disabled">Disabled</span>{% endif %}
+      </td>
+    </tr>
+  </table>
+
+  <form method="post" action="{% url 'dashboard:device_toggle' device.id %}" style="margin-top:16px;"
+        onsubmit="return confirm('{% if device.is_active %}Disable{% else %}Enable{% endif %} this device? This is logged.');">
+    {% csrf_token %}
+    {% if device.is_active %}
+      <button type="submit" class="btn danger">Disable Device</button>
+    {% else %}
+      <button type="submit" class="btn teal">Enable Device</button>
+    {% endif %}
+  </form>
+  <p style="color:#8A8A9A;font-size:13px;margin-top:10px;">
+    There's no delete option here on purpose — attendance records are linked
+    to devices, so removing a device row would erase attendance history.
+    Disabling is the safe equivalent.
+  </p>
+</div>
+
+<h3>History for this device</h3>
+<div class="card">
+  <table>
+    <tr><th>When</th><th>Event</th><th>By</th><th>Notes</th></tr>
+    {% for e in events %}
+    <tr>
+      <td>{{ e.created_at|date:"M j, Y — H:i" }}</td>
+      <td>
+        {% if 'mismatch' in e.event_type %}<span class="badge warn">{{ e.get_event_type_display }}</span>
+        {% else %}{{ e.get_event_type_display }}{% endif %}
+      </td>
+      <td>{{ e.performed_by.username|default:"—" }}</td>
+      <td>
+        {{ e.notes }}
+        {% if e.conflicting_student %}(vs {{ e.conflicting_student.roll_number }}){% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4" style="color:#8A8A9A;">No history recorded yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

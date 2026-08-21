@@ -1,0 +1,43 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Event Log — AttendX Admin{% endblock %}
+{% block content %}
+<h2>Device Event Log</h2>
+
+<form method="get" class="filters">
+  <input type="text" name="q" placeholder="Search roll number or fingerprint" value="{{ q }}">
+  <select name="type">
+    <option value="">All event types</option>
+    {% for value, label in event_types %}
+    <option value="{{ value }}" {% if event_type == value %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn outline">Filter</button>
+</form>
+
+<div class="card">
+  <table>
+    <tr><th>When</th><th>Event</th><th>Student</th><th>Conflicting Student</th><th>By</th><th>Notes</th></tr>
+    {% for e in page_obj %}
+    <tr>
+      <td>{{ e.created_at|date:"M j, Y — H:i" }}</td>
+      <td>
+        {% if 'mismatch' in e.event_type %}<span class="badge warn">{{ e.get_event_type_display }}</span>
+        {% else %}{{ e.get_event_type_display }}{% endif %}
+      </td>
+      <td>{{ e.student.roll_number }}</td>
+      <td>{{ e.conflicting_student.roll_number|default:"—" }}</td>
+      <td>{{ e.performed_by.username|default:"—" }}</td>
+      <td>{{ e.notes }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" style="color:#8A8A9A;">No events match.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="pagination">
+  {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&type={{ event_type }}">&larr; Prev</a>{% endif %}
+  Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+  {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}&type={{ event_type }}">Next &rarr;</a>{% endif %}
+</div>
+{% endblock %}

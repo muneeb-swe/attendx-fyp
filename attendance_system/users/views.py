@@ -7,7 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from cryptography.hazmat.primitives.serialization import load_pem_public_key, load_der_public_key
 import base64
 
-from .models import User, Student, Teacher, Device
+from .models import User, Student, Teacher, Device, DeviceEvent
 from .serializers import (
     LoginSerializer,
     DeviceEnrollSerializer,
@@ -111,13 +111,20 @@ class DeviceEnrollView(APIView):
         # Get the currently logged-in student's existing active device
         student_device = Device.objects.filter(student=student, is_active=True).first()
 
-        # Check if student already has a device enrolled
+        # Check if this physical device is already bound to someone
         fingerprint_device = Device.objects.filter(device_fingerprint=device_fingerprint, is_active=True).first()
 
-        # Same student AND same physical device
+        # Same student AND same physical device -> re-enrollment
         if student_device and student_device.device_fingerprint == device_fingerprint:
             student_device.public_key = public_key_str
             student_device.save(update_fields=['public_key'])
+
+            DeviceEvent.objects.create(
+                student=student,
+                device=student_device,
+                event_type='re_enrolled',
+                device_fingerprint=device_fingerprint,
+            )
 
             return Response({
                 'message': 'Device re-enrolled successfully',
@@ -125,23 +132,37 @@ class DeviceEnrollView(APIView):
                 'enrolled_at': student_device.registered_at,
             }, status=status.HTTP_201_CREATED)
 
-
-        # Student already has a different device
+        # Student already has a different device -> blocked, but log it
         if student_device:
+            DeviceEvent.objects.create(
+                student=student,
+                device=student_device,
+                event_type='mismatch_student_has_device',
+                device_fingerprint=device_fingerprint,
+                notes=f"Attempted to enroll a new fingerprint while device "
+                      f"'{student_device.device_fingerprint[:40]}' is still active.",
+            )
             return Response(
                 {'error': 'Your account is already registered to another device.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-
-        # This physical device belongs to another student
+        # This physical device belongs to another student -> blocked, but log it
         if fingerprint_device:
+            DeviceEvent.objects.create(
+                student=student,
+                device=fingerprint_device,
+                event_type='mismatch_fingerprint_taken',
+                device_fingerprint=device_fingerprint,
+                conflicting_student=fingerprint_device.student,
+                notes=f"Fingerprint already active on {fingerprint_device.student.roll_number}.",
+            )
             return Response(
                 {'error': 'This device is registered to a different student. Contact admin.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # First enrollment → create new device
+        # First enrollment -> create new device
         serializer = DeviceEnrollSerializer(
             data=request.data,
             context={'student': student}
@@ -154,6 +175,13 @@ class DeviceEnrollView(APIView):
             )
 
         device = serializer.save(student=student)
+
+        DeviceEvent.objects.create(
+            student=student,
+            device=device,
+            event_type='enrolled',
+            device_fingerprint=device.device_fingerprint,
+        )
 
         return Response({
             'message': 'Device enrolled successfully',
