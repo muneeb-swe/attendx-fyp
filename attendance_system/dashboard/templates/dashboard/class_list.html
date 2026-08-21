@@ -1,0 +1,24 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Classes — AttendX Admin{% endblock %}
+{% block content %}
+<h2>Classes</h2>
+<p style="color:#8A8A9A;">Pick a class, then a day, to see every student's attendance record with proof.</p>
+
+<div class="card">
+  <table>
+    <tr><th>Class</th><th>Subject</th><th>Teacher</th><th>Enrolled</th><th>Sessions</th><th></th></tr>
+    {% for c in classes %}
+    <tr>
+      <td>{{ c.obj.name }}</td>
+      <td>{{ c.obj.subject }}</td>
+      <td>{{ c.obj.teacher.user.get_full_name }}</td>
+      <td>{{ c.enrolled_count }}</td>
+      <td>{{ c.session_count }}</td>
+      <td><a class="link" href="{% url 'dashboard:class_detail' c.obj.id %}">View sessions &rarr;</a></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" style="color:#8A8A9A;">No classes yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

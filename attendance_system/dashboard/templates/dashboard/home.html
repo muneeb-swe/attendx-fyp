@@ -3,25 +3,31 @@
 {% block content %}
 <h2>Overview</h2>
 
+<div class="card" style="background:#e6f7f1;border-color:#00C896;">
+  <strong>Looking into a specific student's dispute?</strong>
+  Go to <a class="link" href="{% url 'dashboard:class_list' %}">Classes</a> &rarr; pick the class &rarr;
+  pick the day &rarr; you'll see every student's original scan, their signature (proof), and whether
+  a teacher changed it afterward.
+</div>
+
 <h3 style="margin-top:24px;">Attendance</h3>
 <div class="stat-grid">
   <div class="stat-box"><div class="num">{{ total }}</div><div class="label">Total records</div></div>
   <div class="stat-box"><div class="num">{{ present }}</div><div class="label">Present</div></div>
   <div class="stat-box"><div class="num">{{ absent }}</div><div class="label">Absent</div></div>
-  <div class="stat-box"><div class="num">{{ manual }}</div><div class="label">Manual override</div></div>
 </div>
 
-<h3>Transparency — modified records</h3>
+<h3>Modified records</h3>
 <div class="stat-grid">
   <div class="stat-box"><div class="num">{{ modified }}</div><div class="label">Modified ({{ modified_pct }}%)</div></div>
   <div class="stat-box"><div class="num">{{ absent_to_present }}</div><div class="label">Absent &rarr; Present</div></div>
   <div class="stat-box"><div class="num">{{ present_to_absent }}</div><div class="label">Present &rarr; Absent</div></div>
 </div>
 
-<h3>Signature verification</h3>
+<h3>Currently-present records — proof check</h3>
 <div class="stat-grid">
-  <div class="stat-box"><div class="num">{{ signed }}</div><div class="label">Signature recorded</div></div>
-  <div class="stat-box"><div class="num">{{ unsigned }}</div><div class="label">No signature (manual)</div></div>
+  <div class="stat-box"><div class="num">{{ present_with_proof }}</div><div class="label">Present with signature (real scan)</div></div>
+  <div class="stat-box"><div class="num">{{ present_without_proof }}</div><div class="label">Present with no signature (manual only)</div></div>
 </div>
 
 <h3>Devices</h3>

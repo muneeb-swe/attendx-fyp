@@ -74,6 +74,7 @@
     <div class="brand">Attend<span>X</span> Admin</div>
     <nav>
       <a href="{% url 'dashboard:home' %}" class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">Overview</a>
+      <a href="{% url 'dashboard:class_list' %}" class="{% if 'class' in request.resolver_match.url_name or request.resolver_match.url_name == 'session_detail' %}active{% endif %}">Classes</a>
       <a href="{% url 'dashboard:device_list' %}" class="{% if 'device' in request.resolver_match.url_name %}active{% endif %}">Devices</a>
       <a href="{% url 'dashboard:event_log' %}" class="{% if request.resolver_match.url_name == 'event_log' %}active{% endif %}">Event Log</a>
       <a href="{% url 'dashboard:logout' %}">Log out ({{ user.username }})</a>

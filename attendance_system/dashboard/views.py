@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 
 from users.models import Device, DeviceEvent, Student
-from attendance.models import AttendanceRecord, Session
+from attendance.models import AttendanceRecord, Session, Class, Enrollment
 
 from .decorators import admin_required
 
@@ -44,7 +44,6 @@ def home(request):
     total = records.count()
     present = records.filter(status='present').count()
     absent = records.filter(status='absent').count()
-    manual = records.filter(status='manual').count()
 
     modified = records.filter(is_modified=True).count()
     absent_to_present = records.filter(
@@ -54,8 +53,14 @@ def home(request):
         is_modified=True, original_status='present', status='absent'
     ).count()
 
-    signed = records.exclude(signature='').count()
-    unsigned = records.filter(signature='').count()
+    # Only meaningful among CURRENTLY present records: absent students
+    # never scan, so "no signature" on an absent record is expected,
+    # not suspicious. What actually matters is a record marked present
+    # right now with no signature backing it — that means the "present"
+    # came entirely from a teacher's manual edit, not a real scan.
+    present_records = records.filter(status='present')
+    present_with_proof = present_records.exclude(signature='').count()
+    present_without_proof = present_records.filter(signature='').count()
 
     total_devices = Device.objects.count()
     active_devices = Device.objects.filter(is_active=True).count()
@@ -65,12 +70,13 @@ def home(request):
     ).count()
 
     context = {
-        'total': total, 'present': present, 'absent': absent, 'manual': manual,
+        'total': total, 'present': present, 'absent': absent,
         'modified': modified,
         'modified_pct': round(modified / total * 100, 1) if total else 0,
         'absent_to_present': absent_to_present,
         'present_to_absent': present_to_absent,
-        'signed': signed, 'unsigned': unsigned,
+        'present_with_proof': present_with_proof,
+        'present_without_proof': present_without_proof,
         'total_devices': total_devices,
         'active_devices': active_devices,
         'disabled_devices': disabled_devices,
@@ -167,6 +173,71 @@ def device_toggle(request, device_id):
             )
 
     return redirect('dashboard:device_detail', device_id=device_id)
+
+
+@admin_required
+def class_list(request):
+    """
+    Every class, with its enrolled-student count and session count.
+    Entry point into the day-by-day transparency drill-down.
+    """
+    classes = Class.objects.select_related('teacher', 'teacher__user').all()
+    data = []
+    for c in classes:
+        data.append({
+            'obj': c,
+            'enrolled_count': Enrollment.objects.filter(class_enrolled=c).count(),
+            'session_count': Session.objects.filter(class_ref=c).count(),
+        })
+    return render(request, 'dashboard/class_list.html', {'classes': data})
+
+
+@admin_required
+def class_detail(request, class_id):
+    """
+    Every session ever held for this class, most recent first — the
+    'day by day' view. Each row shows that day's present/absent/
+    modified counts so an admin can spot an unusual day at a glance
+    before drilling into it.
+    """
+    class_obj = get_object_or_404(Class, id=class_id)
+    sessions = Session.objects.filter(class_ref=class_obj).order_by('-created_at')
+
+    data = []
+    for s in sessions:
+        records = AttendanceRecord.objects.filter(session=s)
+        data.append({
+            'obj': s,
+            'present': records.filter(status='present').count(),
+            'absent': records.filter(status='absent').count(),
+            'modified': records.filter(is_modified=True).count(),
+            'total': records.count(),
+        })
+
+    return render(request, 'dashboard/class_detail.html', {
+        'class_obj': class_obj, 'sessions': data,
+    })
+
+
+@admin_required
+def session_detail(request, session_id):
+    """
+    The actual proof view. One row per enrolled student for this
+    session: what they were originally marked as (with signature =
+    proof they scanned), what they're marked as now, and whether a
+    teacher changed it. This is what answers 'I marked attendance,
+    the teacher changed it to absent, prove it' — original_status
+    'present' + a non-empty signature is the student's proof, visible
+    here regardless of what the current status says.
+    """
+    session = get_object_or_404(Session.objects.select_related('class_ref', 'teacher', 'teacher__user'), id=session_id)
+    records = AttendanceRecord.objects.filter(session=session).select_related(
+        'student', 'student__user', 'device'
+    ).order_by('student__roll_number')
+
+    return render(request, 'dashboard/session_detail.html', {
+        'session': session, 'records': records,
+    })
 
 
 @admin_required

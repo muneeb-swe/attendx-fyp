@@ -125,4 +125,3 @@ class DeviceEvent(models.Model):
 
     def __str__(self):
         return f"{self.get_event_type_display()} — {self.student.roll_number} ({self.created_at:%Y-%m-%d %H:%M})"
-

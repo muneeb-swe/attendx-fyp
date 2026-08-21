@@ -1,0 +1,28 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1>Attendance Stats</h1>
+<style>
+  .stat-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+  .stat-box { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 16px 20px; min-width: 180px; }
+  .stat-box .num { font-size: 28px; font-weight: 700; }
+  .stat-box .label { color: #666; font-size: 13px; }
+</style>
+<div class="stat-grid">
+  <div class="stat-box"><div class="num">{{ total }}</div><div class="label">Total attendance records</div></div>
+  <div class="stat-box"><div class="num">{{ present }}</div><div class="label">Present</div></div>
+  <div class="stat-box"><div class="num">{{ absent }}</div><div class="label">Absent</div></div>
+</div>
+<h2>Modified records</h2>
+<div class="stat-grid">
+  <div class="stat-box"><div class="num">{{ modified }} ({{ modified_pct }}%)</div><div class="label">Records ever modified by a teacher</div></div>
+  <div class="stat-box"><div class="num">{{ absent_to_present }}</div><div class="label">Absent &rarr; Present</div></div>
+  <div class="stat-box"><div class="num">{{ present_to_absent }}</div><div class="label">Present &rarr; Absent</div></div>
+</div>
+<h2>Currently-present records — proof check</h2>
+<div class="stat-grid">
+  <div class="stat-box"><div class="num">{{ present_with_proof }}</div><div class="label">Present with signature (real scan)</div></div>
+  <div class="stat-box"><div class="num">{{ present_without_proof }}</div><div class="label">Present with no signature (manual only)</div></div>
+</div>
+<p>For per-student proof (which record, which day, which class), use the AttendX web dashboard's Classes drill-down instead of this aggregate view.</p>
+<p><a href="../">&larr; Back to Attendance Records</a></p>
+{% endblock %}

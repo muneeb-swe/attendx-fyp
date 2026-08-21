@@ -46,7 +46,6 @@ class AttendanceRecordAdmin(admin.ModelAdmin):
         total = qs.count()
         present = qs.filter(status='present').count()
         absent = qs.filter(status='absent').count()
-        manual = qs.filter(status='manual').count()
 
         modified = qs.filter(is_modified=True).count()
         absent_to_present = qs.filter(
@@ -56,8 +55,11 @@ class AttendanceRecordAdmin(admin.ModelAdmin):
             is_modified=True, original_status='present', status='absent'
         ).count()
 
-        signed = qs.exclude(signature='').count()
-        unsigned = qs.filter(signature='').count()
+        # Only meaningful among currently-present records — see
+        # dashboard/views.py home() for the full reasoning.
+        present_qs = qs.filter(status='present')
+        present_with_proof = present_qs.exclude(signature='').count()
+        present_without_proof = present_qs.filter(signature='').count()
 
         context = dict(
             self.admin_site.each_context(request),
@@ -65,13 +67,12 @@ class AttendanceRecordAdmin(admin.ModelAdmin):
             total=total,
             present=present,
             absent=absent,
-            manual=manual,
             modified=modified,
             modified_pct=round(modified / total * 100, 1) if total else 0,
             absent_to_present=absent_to_present,
             present_to_absent=present_to_absent,
-            signed=signed,
-            unsigned=unsigned,
+            present_with_proof=present_with_proof,
+            present_without_proof=present_without_proof,
         )
         return TemplateResponse(request, 'admin/attendance/stats.html', context)
 

@@ -1,0 +1,31 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ class_obj.name }} — Sessions{% endblock %}
+{% block content %}
+<a class="link" href="{% url 'dashboard:class_list' %}">&larr; All classes</a>
+
+<h2 style="margin-top:14px;">{{ class_obj.name }} <span style="color:#8A8A9A;font-weight:400;">— {{ class_obj.subject }}</span></h2>
+
+<div class="card">
+  <table>
+    <tr><th>Date</th><th>Present</th><th>Absent</th><th>Modified</th><th>Status</th><th></th></tr>
+    {% for s in sessions %}
+    <tr>
+      <td>{{ s.obj.created_at|date:"D, M j, Y — H:i" }}</td>
+      <td>{{ s.present }}</td>
+      <td>{{ s.absent }}</td>
+      <td>
+        {% if s.modified %}<span class="badge warn">{{ s.modified }}</span>{% else %}0{% endif %}
+      </td>
+      <td>
+        {% if s.obj.is_submitted %}<span class="badge active">Submitted</span>
+        {% elif s.obj.is_active %}<span class="badge warn">In progress</span>
+        {% else %}<span class="badge disabled">Stopped</span>{% endif %}
+      </td>
+      <td><a class="link" href="{% url 'dashboard:session_detail' s.obj.id %}">View records &rarr;</a></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" style="color:#8A8A9A;">No sessions held yet for this class.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

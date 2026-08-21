@@ -1,0 +1,59 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Session — {{ session.class_ref.name }}{% endblock %}
+{% block content %}
+<a class="link" href="{% url 'dashboard:class_detail' session.class_ref.id %}">&larr; {{ session.class_ref.name }} sessions</a>
+
+<h2 style="margin-top:14px;">{{ session.class_ref.name }} — {{ session.created_at|date:"D, M j, Y — H:i" }}</h2>
+<p style="color:#8A8A9A;">
+  Teacher: {{ session.teacher.user.get_full_name }} ·
+  {% if session.is_submitted %}Submitted{% elif session.is_active %}Still in progress{% else %}Stopped, not yet submitted{% endif %}
+</p>
+
+<div class="card">
+  <p style="color:#8A8A9A;font-size:13px;margin-top:0;">
+    <strong>Original</strong> is what the student's device actually reported
+    (present = they scanned and signed; absent = auto-filled at session stop,
+    they never scanned). <strong>Signature</strong> is the cryptographic proof
+    of that original scan. <strong>Current</strong> is what the record says
+    now, after any teacher edits. If a student disputes their status, check
+    whether Original was "present" with a signature present — that's their
+    proof, independent of what Current says.
+  </p>
+  <table>
+    <tr>
+      <th>Roll Number</th><th>Student</th><th>Original</th><th>Signature (proof)</th>
+      <th>Current</th><th>Modified?</th><th>Marked at</th>
+    </tr>
+    {% for r in records %}
+    <tr {% if r.is_modified %}style="background:#fffaf0;"{% endif %}>
+      <td>{{ r.student.roll_number }}</td>
+      <td>{{ r.student.user.get_full_name }}</td>
+      <td>
+        {% if r.original_status == 'present' %}<span class="badge active">Present</span>
+        {% else %}<span class="badge disabled">Absent</span>{% endif %}
+      </td>
+      <td>
+        {% if r.signature %}
+          <details>
+            <summary style="cursor:pointer;color:#1a7f37;font-weight:600;">Has proof</summary>
+            <div style="font-family:monospace;font-size:11px;word-break:break-all;max-width:280px;color:#8A8A9A;margin-top:6px;">{{ r.signature|truncatechars:120 }}</div>
+          </details>
+        {% else %}
+          <span style="color:#999;">No proof (never scanned)</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if r.status == 'present' %}<span class="badge active">Present</span>
+        {% else %}<span class="badge disabled">Absent</span>{% endif %}
+      </td>
+      <td>
+        {% if r.is_modified %}<span class="badge warn">Changed by teacher</span>{% else %}—{% endif %}
+      </td>
+      <td>{{ r.timestamp|date:"H:i:s" }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="7" style="color:#8A8A9A;">No records yet — session may still be in progress.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}
