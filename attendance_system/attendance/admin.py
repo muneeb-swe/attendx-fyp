@@ -20,7 +20,7 @@ class AttendanceRecordAdmin(admin.ModelAdmin):
         'session', 'student_roll', 'status', 'original_status_display',
         'modified_badge', 'signature_badge', 'timestamp',
     ]
-    list_filter = ['status', 'is_modified', 'session__class_obj']
+    list_filter = ['status', 'is_modified', 'session__class_ref']
     search_fields = ['student__roll_number', 'session__id']
     ordering = ['-timestamp']
     readonly_fields = ['signature', 'timestamp']
