@@ -4,6 +4,16 @@ All notable changes to AttendX are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates reflect actual commit history.
 
+## [2026-08-22]
+
+### Added
+- Test suite: 80 tests (`users/tests.py` — 20, `attendance/tests.py` — 36, `dashboard/tests.py` — 24) covering login, the full `DeviceEnrollView`/`DeviceStatusView` branch set including `DeviceEvent` logging, database-level device constraints, the complete QR generate → register-scan → biometric sign → mark flow with real RSA signing (not mocked), session lifecycle (stop/submit/discard), teacher edit overrides, and dashboard access control, overview stats, device management, and event-log filtering.
+
+### Fixed
+- `DeviceEnrollSerializer.validate()` was checking all devices ever created for a student rather than only active ones — once a device was disabled (the exact action the admin dashboard's Devices page exists to perform), the student could never enroll a replacement, permanently locking them out. Scoped the check to `is_active=True` devices only.
+- `DeviceStatusView` was still falling through with no `return` when a student has never enrolled a device and their submitted fingerprint matches nothing — the single most common real-world call (a brand-new student's first-ever status check) — causing an unhandled `None` return and a 500 in production. Note: the 2026-08-19 entry below states this case was already handled; testing today found the fallthrough was still unfixed in the shipped code. Corrected now and covered by a regression test.
+- Both the dashboard's `device_toggle` view and the Django-admin `enable_devices` bulk action caught `IntegrityError` without wrapping the write in its own `transaction.atomic()` savepoint. Not visible under SQLite, but under Postgres (production) a failed enable attempt would poison the surrounding transaction for the rest of the request. Fixed both call sites with proper atomic savepoints. (Disable actions were checked and don't need the same fix — disabling a device never violates a uniqueness constraint, so no `IntegrityError` path exists there.)
+
 ## [2026-08-21]
 
 ### Added

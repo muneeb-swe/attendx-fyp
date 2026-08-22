@@ -103,6 +103,17 @@ python manage.py runserver
 
 For local development, `DATABASE_URL` and other environment variables are read via `dj-database-url` / standard Django settings — configure a `.env` or export them before running. WebSocket support requires an ASGI server (`daphne`), which is already listed in `requirements.txt`.
 
+### Running tests
+
+```bash
+cd attendance_system
+DEBUG=True SECRET_KEY="any-value-for-testing" python manage.py test \
+  users attendance dashboard \
+  --settings=attendance_system.test_local_settings
+```
+
+80 tests across `users/`, `attendance/`, and `dashboard/` — the `attendance` suite runs the full generate-QR → scan → sign → mark flow with real RSA signing, not mocked.
+
 ### Mobile app
 
 ```bash

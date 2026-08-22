@@ -111,10 +111,10 @@ class DeviceEnrollView(APIView):
         # Get the currently logged-in student's existing active device
         student_device = Device.objects.filter(student=student, is_active=True).first()
 
-        # Check if this physical device is already bound to someone
+        # Check if student already has a device enrolled
         fingerprint_device = Device.objects.filter(device_fingerprint=device_fingerprint, is_active=True).first()
 
-        # Same student AND same physical device -> re-enrollment
+        # Same student AND same physical device
         if student_device and student_device.device_fingerprint == device_fingerprint:
             student_device.public_key = public_key_str
             student_device.save(update_fields=['public_key'])
@@ -132,7 +132,8 @@ class DeviceEnrollView(APIView):
                 'enrolled_at': student_device.registered_at,
             }, status=status.HTTP_201_CREATED)
 
-        # Student already has a different device -> blocked, but log it
+
+        # Student already has a different device
         if student_device:
             DeviceEvent.objects.create(
                 student=student,
@@ -147,7 +148,8 @@ class DeviceEnrollView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # This physical device belongs to another student -> blocked, but log it
+
+        # This physical device belongs to another student
         if fingerprint_device:
             DeviceEvent.objects.create(
                 student=student,
@@ -162,7 +164,7 @@ class DeviceEnrollView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # First enrollment -> create new device
+        # First enrollment → create new device
         serializer = DeviceEnrollSerializer(
             data=request.data,
             context={'student': student}
@@ -230,7 +232,17 @@ class DeviceStatusView(APIView):
                     },
                     status=status.HTTP_403_FORBIDDEN
                 )
-            
+
+            # No device on record at all, and this fingerprint isn't
+            # bound to anyone else either — this is the normal case for
+            # a student who has never enrolled. Every branch above this
+            # falls through here if it doesn't match, so this MUST
+            # return something or DRF crashes with a 500.
+            return Response({
+                'enrolled': False,
+                'status': 'not enrolled'
+            })
+
         except (Student.DoesNotExist, Device.DoesNotExist):
             return Response({
                 'enrolled': False,

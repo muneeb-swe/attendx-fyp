@@ -94,21 +94,23 @@ class DeviceAdmin(admin.ModelAdmin):
 
     @admin.action(description='Enable selected device(s)')
     def enable_devices(self, request, queryset):
+        from django.db import transaction
         enabled, failed = 0, []
         for device in queryset:
             if device.is_active:
                 continue
             device.is_active = True
             try:
-                device.save()
+                with transaction.atomic():
+                    device.save()
+                    DeviceEvent.objects.create(
+                        student=device.student,
+                        device=device,
+                        event_type='reactivated',
+                        device_fingerprint=device.device_fingerprint,
+                        performed_by=request.user,
+                    )
                 enabled += 1
-                DeviceEvent.objects.create(
-                    student=device.student,
-                    device=device,
-                    event_type='reactivated',
-                    device_fingerprint=device.device_fingerprint,
-                    performed_by=request.user,
-                )
             except IntegrityError:
                 failed.append(str(device))
 

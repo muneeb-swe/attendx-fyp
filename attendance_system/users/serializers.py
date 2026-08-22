@@ -31,9 +31,11 @@ class DeviceEnrollSerializer(serializers.ModelSerializer):
         fields = ['public_key', 'device_fingerprint']
 
     def validate(self, data):
-        # Check student doesn't already have a device
+        # Only block on an ACTIVE device — a disabled device (e.g. after
+        # a lost phone was deactivated by an admin) must not permanently
+        # block the student from ever enrolling a replacement.
         student = self.context['student']
-        if Device.objects.filter(student=student).exists():
+        if Device.objects.filter(student=student, is_active=True).exists():
             raise serializers.ValidationError(
                 "Device already registered. Contact admin to replace."
             )

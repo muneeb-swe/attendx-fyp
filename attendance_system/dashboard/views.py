@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.core.paginator import Paginator
 
@@ -159,13 +159,15 @@ def device_toggle(request, device_id):
     else:
         device.is_active = True
         try:
-            device.save(update_fields=['is_active'])
-            DeviceEvent.objects.create(
-                student=device.student, device=device, event_type='reactivated',
-                device_fingerprint=device.device_fingerprint, performed_by=request.user,
-            )
+            with transaction.atomic():
+                device.save(update_fields=['is_active'])
+                DeviceEvent.objects.create(
+                    student=device.student, device=device, event_type='reactivated',
+                    device_fingerprint=device.device_fingerprint, performed_by=request.user,
+                )
             messages.success(request, f"Enabled device for {device.student.roll_number}.")
         except IntegrityError:
+            device.is_active = False  # local object still says True; correct it
             messages.error(
                 request,
                 "Can't enable — this student already has a different active "
