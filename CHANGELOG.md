@@ -4,6 +4,11 @@ All notable changes to AttendX are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates reflect actual commit history.
 
+## [2026-08-23]
+
+### Added
+- The last second legitimate scan was being rejected because of network latency.  Now added 3 second grace period to tackle that latency.
+
 ## [2026-08-22]
 
 ### Added
