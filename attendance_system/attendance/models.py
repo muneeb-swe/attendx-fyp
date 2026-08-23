@@ -33,6 +33,14 @@ class Session(models.Model):
     expected_count = models.IntegerField(null=True, blank=True)
     present_count = models.IntegerField(default=0)
 
+    # Holds only the single most recently rotated-out token, so an
+    # in-flight scan that lands just after rotation still has a short
+    # window to succeed (see GRACE_SECONDS in RegisterScanView). This is
+    # NOT the old QRTokenHistory table — no growing history, just one
+    # token + its own expiry, cleared/overwritten on every rotation.
+    previous_qr_token = models.CharField(max_length=255, null=True, blank=True)
+    previous_qr_expires_at = models.DateTimeField(null=True, blank=True)
+
     def __str__(self):
         return f"{self.class_ref.name} - {self.created_at}"
     

@@ -174,11 +174,93 @@ class RegisterScanViewTests(AttendanceTestBase):
     def test_expired_qr_window_rejected(self):
         session_data = self.start_session_as_teacher()
         session = Session.objects.get(id=session_data['session_id'])
-        session.expires_at = timezone.now() - timedelta(seconds=1)
+        # Push well past the 3-second grace window, not just past expiry
+        session.expires_at = timezone.now() - timedelta(seconds=10)
         session.save()
 
         response = self.register_scan_as_student(session_data['session_id'], session_data['qr_token'])
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_scan_within_grace_period_after_current_token_expiry_succeeds(self):
+        """A scan that lands 1s after the QR's own 5s window closed —
+        still within the 3s grace period — must succeed."""
+        session_data = self.start_session_as_teacher()
+        session = Session.objects.get(id=session_data['session_id'])
+        session.expires_at = timezone.now() - timedelta(seconds=1)
+        session.save()
+
+        response = self.register_scan_as_student(session_data['session_id'], session_data['qr_token'])
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_scan_beyond_grace_period_after_current_token_expiry_rejected(self):
+        session_data = self.start_session_as_teacher()
+        session = Session.objects.get(id=session_data['session_id'])
+        session.expires_at = timezone.now() - timedelta(seconds=4)  # past 3s grace
+        session.save()
+
+        response = self.register_scan_as_student(session_data['session_id'], session_data['qr_token'])
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_scan_with_previous_token_within_its_grace_period_succeeds(self):
+        """
+        The exact scenario reported: a student scans right as the
+        teacher's QR rotates. Their request carries the OLD token,
+        which has already been moved to previous_qr_token/expires_at
+        by RefreshQRView by the time this request arrives.
+        """
+        session_data = self.start_session_as_teacher()
+        old_token = session_data['qr_token']
+
+        self.client.force_authenticate(user=self.teacher_user)
+        self.client.post(f"/api/attendance/session/{session_data['session_id']}/refresh-qr/")
+
+        session = Session.objects.get(id=session_data['session_id'])
+        self.assertEqual(session.previous_qr_token, old_token)
+        # Simulate the old token's own window having just closed
+        session.previous_qr_expires_at = timezone.now() - timedelta(seconds=2)
+        session.save()
+
+        response = self.register_scan_as_student(session_data['session_id'], old_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_scan_with_previous_token_beyond_its_grace_period_rejected(self):
+        session_data = self.start_session_as_teacher()
+        old_token = session_data['qr_token']
+
+        self.client.force_authenticate(user=self.teacher_user)
+        self.client.post(f"/api/attendance/session/{session_data['session_id']}/refresh-qr/")
+
+        session = Session.objects.get(id=session_data['session_id'])
+        session.previous_qr_expires_at = timezone.now() - timedelta(seconds=5)  # past 3s grace
+        session.save()
+
+        response = self.register_scan_as_student(session_data['session_id'], old_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_scan_with_token_from_two_rotations_ago_rejected(self):
+        """
+        Only the SINGLE most recent previous token gets a grace window —
+        this is deliberately not a growing history. A token from two
+        rotations back must be rejected even if it's within what would
+        have been its own grace window, since nothing tracks it anymore.
+        """
+        session_data = self.start_session_as_teacher()
+        very_old_token = session_data['qr_token']
+
+        self.client.force_authenticate(user=self.teacher_user)
+        self.client.post(f"/api/attendance/session/{session_data['session_id']}/refresh-qr/")
+        self.client.post(f"/api/attendance/session/{session_data['session_id']}/refresh-qr/")
+
+        response = self.register_scan_as_student(session_data['session_id'], very_old_token)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_freshly_generated_session_has_no_previous_token_yet(self):
+        """First-ever token of a session — no rotation has happened, so
+        previous_qr_token/expires_at should be None and unused."""
+        session_data = self.start_session_as_teacher()
+        session = Session.objects.get(id=session_data['session_id'])
+        self.assertIsNone(session.previous_qr_token)
+        self.assertIsNone(session.previous_qr_expires_at)
 
     def test_teacher_cannot_register_scan(self):
         session_data = self.start_session_as_teacher()

@@ -166,6 +166,12 @@ class RefreshQRView(APIView):
         except Session.DoesNotExist:
             return Response({'error': 'Active session not found'}, status=status.HTTP_404_NOT_FOUND)
 
+        # Stash the outgoing token before overwriting it — gives a
+        # short grace window (see RegisterScanView) to any scan that
+        # was already in flight when this rotation happened.
+        session.previous_qr_token = session.qr_token
+        session.previous_qr_expires_at = session.expires_at
+
         # Generate new token — reset 5 second timer
         new_token = str(uuid.uuid4())
         session.qr_token = new_token
@@ -210,10 +216,23 @@ class RegisterScanView(APIView):
         if not session.is_active:
             return Response({'error': 'Session is no longer active.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if qr_token != session.qr_token:
+        if qr_token != session.qr_token and qr_token != session.previous_qr_token:
             return Response({'error': 'QR code has expired. Please rescan.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if timezone.now() > session.expires_at:
+        # 3-second grace period: covers a scan that was already in
+        # flight right as the QR rotated or its own window closed —
+        # the request is legitimate, it just arrived a moment late.
+        # Applies to whichever of the two tokens (current or the one
+        # just rotated out) this scan actually matched.
+        GRACE_SECONDS = 3
+        now = timezone.now()
+
+        if qr_token == session.qr_token:
+            deadline = session.expires_at
+        else:
+            deadline = session.previous_qr_expires_at
+
+        if deadline is None or now > deadline + timedelta(seconds=GRACE_SECONDS):
             return Response(
                 {'error': 'QR code has expired. Please rescan.'},
                 status=status.HTTP_400_BAD_REQUEST
