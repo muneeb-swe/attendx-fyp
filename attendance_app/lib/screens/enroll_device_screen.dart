@@ -42,20 +42,57 @@ void initState() {
     });
 
     try {
-      // Allow re-enrollment — server handles hardware ID check
-
-      setState(() {
-        _statusMessage = 'Getting device info...';
-      });
-
-      // Step 2: Get device fingerprint
+      // Step 1: Get device fingerprint FIRST — needed for the status
+      // check below, and reused for the actual enroll call further
+      // down so we only fetch it once per button press.
       String deviceFingerprint = 'unknown-device';
       try {
         deviceFingerprint = await CryptoService.getDeviceFingerprint();
       } catch (e) {
-        // Use fallback on non-Android devices
         deviceFingerprint = 'web-test-device';
       }
+
+      // Step 2: Check live device status BEFORE generating any keys or
+      // hitting the enroll endpoint. Avoids wasting a Keystore key
+      // generation (and the OS-level ceremony around it) when we can
+      // already tell from the server that this would be rejected, and
+      // avoids a redundant enroll call if this exact device is already
+      // registered to this account.
+      setState(() {
+        _statusMessage = 'Checking device...';
+      });
+
+      final statusResult = await ApiService.getDeviceStatus(
+        deviceFingerprint: deviceFingerprint,
+      );
+      final deviceStatus = statusResult['data']?['status'];
+
+      if (deviceStatus == 'device mismatch') {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('device_mismatch', true);
+        setState(() {
+          _isLoading = false;
+          _isDeviceMismatch = true;
+          _errorMessage = 'This account is registered to a different device. Contact admin.';
+        });
+        return;
+      }
+
+      if (deviceStatus == 'enrolled') {
+        // This exact device is already this student's registered
+        // device — nothing to do, no need to re-generate keys or
+        // call enroll again.
+        setState(() {
+          _isLoading = false;
+          _isSuccess = true;
+          _statusMessage = 'This device is already enrolled.';
+        });
+        return;
+      }
+
+      // deviceStatus == 'not enrolled' (or the check itself failed to
+      // return a recognizable status) — fall through to the normal
+      // enrollment flow below.
 
       setState(() {
         _statusMessage = 'Generating security keys...';
@@ -71,7 +108,7 @@ void initState() {
         return;
       }
 
-      // Step 5: Send to server
+      // Step 4: Send to server
       final result = await ApiService.enrollDevice(
         publicKey: publicKey,
         deviceFingerprint: deviceFingerprint,
