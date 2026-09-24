@@ -7,14 +7,15 @@ class CryptoService {
 
   // Get device fingerprint
   static Future<String> getDeviceFingerprint() async {
-    try {
-      final deviceInfo = DeviceInfoPlugin();
-      final androidInfo = await deviceInfo.androidInfo;
-      return '${androidInfo.brand}-${androidInfo.model}-${androidInfo.id}';
-    } catch (e) {
-      return 'unknown-device';
-    }
+  try {
+    final androidInfo = await DeviceInfoPlugin().androidInfo;
+    final androidId = await _channel.invokeMethod<String>('getAndroidId');
+    if (androidId == null || androidId.isEmpty) return 'unknown-device';
+    return '${androidInfo.brand}-${androidInfo.model}-$androidId';
+  } catch (e) {
+    return 'unknown-device';
   }
+}
 
   // Check if key exists in Android Keystore
   static Future<bool> hasKeys() async {

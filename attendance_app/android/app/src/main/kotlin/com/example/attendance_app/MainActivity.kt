@@ -8,6 +8,7 @@ import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.security.Signature
+import android.provider.Settings
 
 class MainActivity : FlutterFragmentActivity() {
 
@@ -24,6 +25,14 @@ class MainActivity : FlutterFragmentActivity() {
             CHANNEL
         ).setMethodCallHandler { call, result ->
             when (call.method) {
+
+                "getAndroidId" -> {
+                    try {
+                        result.success(Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID))
+                    } catch (e: Exception) {
+                        result.error("ANDROID_ID_ERROR", e.message, null)
+                    }
+                }
 
                 "generateKeyPair" -> {
                     try {
