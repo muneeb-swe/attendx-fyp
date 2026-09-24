@@ -5,6 +5,7 @@ from cryptography.hazmat.primitives import serialization
 from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User, Student, Teacher, Device, DeviceEvent
 
@@ -236,4 +237,48 @@ class VerifyTokenViewTests(TestCase):
 
     def test_verify_without_authentication_rejected(self):
         response = self.client.get('/api/auth/verify/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class TokenRefreshViewTests(TestCase):
+    """
+    The Flutter app calls /api/auth/token/refresh/ when its 2-hour access
+    token has expired. That route was missing, so refresh never worked.
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='student1', password='pass123', role='student',
+        )
+        Student.objects.create(
+            user=self.user, roll_number='CS-101', department='CS', batch='2026'
+        )
+        # Build tokens directly instead of calling /login/, which is
+        # throttled to 5/min per IP and would trip up the full test run.
+        token = RefreshToken.for_user(self.user)
+        self.refresh = str(token)
+        self.access = str(token.access_token)
+
+    def test_valid_refresh_token_returns_working_access_token(self):
+        response = self.client.post('/api/auth/token/refresh/', {
+            'refresh': self.refresh,
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access', response.data)
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
+        verify = self.client.get('/api/auth/verify/')
+        self.assertEqual(verify.status_code, status.HTTP_200_OK)
+
+    def test_garbage_refresh_token_rejected(self):
+        response = self.client.post('/api/auth/token/refresh/', {
+            'refresh': 'not-a-real-token',
+        })
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_access_token_cannot_be_used_as_refresh_token(self):
+        response = self.client.post('/api/auth/token/refresh/', {
+            'refresh': self.access,
+        })
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

@@ -19,22 +19,46 @@ class ApiService {
     return await storage.read(key: 'access_token');
   }
 
-  // Delete token on logout
+  // Delete both tokens on logout. The refresh token must go too,
+  // otherwise a logged-out app could silently sign itself back in.
   static Future<void> deleteToken() async {
     await storage.delete(key: 'access_token');
+    await storage.delete(key: 'refresh_token');
+  }
+
+  // True if the JWT has expired, or will within [skewSeconds].
+  static bool _isExpiredOrExpiring(String token, {int skewSeconds = 30}) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+      final payload =
+          utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      final exp = jsonDecode(payload)['exp'];
+      if (exp is! int) return true;
+      final nowSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      return nowSeconds >= exp - skewSeconds;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  // Returns an access token that is valid right now, refreshing it first
+  // if it has expired. Returns whatever is stored if the refresh fails,
+  // so the server's 401 decides what happens next.
+  static Future<String?> getValidToken() async {
+    final token = await getToken();
+    if (token != null && !_isExpiredOrExpiring(token)) return token;
+
+    final refreshed = await _refreshToken();
+    if (refreshed) return await getToken();
+    return token;
   }
 
   // Headers with token
   static Future<Map<String, String>> getHeaders() async {
-    String? token = await getToken();
-    
-    // Try to refresh if expired
-    if (token == null) {
-      final refreshed = await _refreshToken();
-      if (!refreshed) return {'Content-Type': 'application/json'};
-      token = await getToken();
-    }
-    
+    final token = await getValidToken();
+    if (token == null) return {'Content-Type': 'application/json'};
+
     return {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
@@ -44,17 +68,21 @@ class ApiService {
   static Future<bool> _refreshToken() async {
     final refreshToken = await storage.read(key: 'refresh_token');
     if (refreshToken == null) return false;
-    
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/token/refresh/'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'refresh': refreshToken}),
-    );
-    
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      await saveToken(data['access']);
-      return true;
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/token/refresh/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'refresh': refreshToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        await saveToken(data['access']);
+        return true;
+      }
+    } catch (e) {
+      // Network error: treat as "could not refresh".
     }
     return false;
   }

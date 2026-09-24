@@ -53,7 +53,7 @@ class _AttendanceHistoryScreenState
   }
 
   void _connectWebSocket() async {
-    final token = await ApiService.getToken();
+    final token = await ApiService.getValidToken();
     final wsUrl = 'wss://attendx-fyp-production.up.railway.app/ws/attendance/student/history/?token=$token';
     _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
     _wsChannel!.stream.listen(

@@ -112,7 +112,7 @@ DEBUG=True SECRET_KEY="any-value-for-testing" python manage.py test \
   --settings=attendance_system.test_local_settings
 ```
 
-80 tests across `users/`, `attendance/`, and `dashboard/` — the `attendance` suite runs the full generate-QR → scan → sign → mark flow with real RSA signing, not mocked.
+89 tests across `users/`, `attendance/`, and `dashboard/` — the `attendance` suite runs the full generate-QR → scan → sign → mark flow with real RSA signing, not mocked.
 
 ### Mobile app
 
