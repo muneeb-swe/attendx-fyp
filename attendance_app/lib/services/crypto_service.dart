@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
@@ -8,6 +9,13 @@ class CryptoService {
   // Get device fingerprint
   static Future<String> getDeviceFingerprint() async {
   try {
+    if (Platform.isIOS) {
+      final iosInfo = await DeviceInfoPlugin().iosInfo;
+      final identifier = iosInfo.identifierForVendor;
+      if (identifier == null || identifier.isEmpty) return 'unknown-device';
+      return '${iosInfo.name}-${iosInfo.model}-$identifier';
+    }
+    
     final androidInfo = await DeviceInfoPlugin().androidInfo;
     final androidId = await _channel.invokeMethod<String>('getAndroidId');
     if (androidId == null || androidId.isEmpty) return 'unknown-device';
