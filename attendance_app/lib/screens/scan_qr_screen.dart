@@ -11,6 +11,27 @@ class ScanQRScreen extends StatefulWidget {
 }
 
 class _ScanQRScreenState extends State<ScanQRScreen> {
+  // Maps a specific scan-authentication failure code to a message that
+  // tells the student what to actually do about it, instead of a
+  // generic error.
+    String _friendlyScanAuthMessage(String code) {
+    switch (code) {
+      case 'NO_BIOMETRIC_ENROLLED':
+        return "No fingerprint or face is set up on this phone. "
+            "Go to Settings > Security, add one, then try scanning again.";
+      case 'NO_LOCK_SCREEN':
+        return "Your phone doesn't have a lock screen set up. "
+            "Go to Settings > Security, set one up, then try scanning again.";
+      case 'KEY_INVALIDATED':
+        return "This device's security key is no longer valid, usually "
+            "because the fingerprint or lock screen settings changed since "
+            "it was enrolled. Ask your admin to reset this device's "
+            "enrollment, then enroll it again.";
+      default:
+        return 'Authentication failed. Please try again.';
+    }
+  }
+  
   final MobileScannerController _scannerController = MobileScannerController();
 
   bool _isProcessing = false;
@@ -81,13 +102,16 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
   });
 
     // Biometric + Sign in one hardware operation
-  String? signature;
+    String? signature;
   try {
     signature = await CryptoService.signData('$sessionId:$qrToken');
     if (signature == null) {
       _showError('Authentication cancelled');
       return;
     }
+  } on CryptoAuthException catch (e) {
+    _showError(_friendlyScanAuthMessage(e.code));
+    return;
   } catch (e) {
     _showError('Authentication failed. Please try again.');
     return;

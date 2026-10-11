@@ -8,6 +8,7 @@ import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.security.Signature
+import java.security.InvalidAlgorithmParameterException
 import android.provider.Settings
 
 class MainActivity : FlutterFragmentActivity() {
@@ -34,10 +35,19 @@ class MainActivity : FlutterFragmentActivity() {
                     }
                 }
 
-                "generateKeyPair" -> {
+                                "generateKeyPair" -> {
                     try {
                         val publicKey = KeystoreHelper.generateKeyPair()
                         result.success(publicKey)
+                    } catch (e: InvalidAlgorithmParameterException) {
+                        // Thrown by AndroidKeyStore when the device has no
+                        // secure lock screen at all (no PIN, pattern,
+                        // password, or fingerprint set up).
+                        result.error(
+                            "NO_LOCK_SCREEN",
+                            "No secure lock screen set up on this device",
+                            null
+                        )
                     } catch (e: Exception) {
                         result.error("KEYGEN_ERROR", e.message, null)
                     }
@@ -111,13 +121,28 @@ class MainActivity : FlutterFragmentActivity() {
                                     }
                                 }
 
-                                override fun onAuthenticationError(
+                                                                override fun onAuthenticationError(
                                     errorCode: Int,
                                     errString: CharSequence
                                 ) {
                                     Handler(Looper.getMainLooper()).post {
+                                        // Distinguish "no fingerprint enrolled on this
+                                        // phone" and "no biometric hardware at all" from
+                                        // an actual user cancel or other failure, so the
+                                        // UI can show the right message instead of a
+                                        // generic one.
+                                        val code = when (errorCode) {
+                                            BiometricPrompt.ERROR_NO_BIOMETRICS,
+                                            BiometricPrompt.ERROR_HW_NOT_PRESENT,
+                                            BiometricPrompt.ERROR_HW_UNAVAILABLE ->
+                                                "NO_BIOMETRIC_ENROLLED"
+                                            BiometricPrompt.ERROR_USER_CANCELED,
+                                            BiometricPrompt.ERROR_NEGATIVE_BUTTON ->
+                                                "USER_CANCELED"
+                                            else -> "BIOMETRIC_ERROR"
+                                        }
                                         pendingResult?.error(
-                                            "BIOMETRIC_ERROR",
+                                            code,
                                             errString.toString(),
                                             null
                                         )

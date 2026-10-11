@@ -130,8 +130,25 @@ class KeychainHelper {
             operation: .useKeySign,
             localizedReason: "Verify your identity to mark attendance"
         ) { success, error in
-            guard success else {
-                completion(.failure(error ?? KeychainError.biometricFailed))
+                        guard success else {
+                // Distinguish "no Face ID / Touch ID enrolled" and "no
+                // passcode set at all" from any other failure, so the
+                // caller can show the right message instead of a
+                // generic one.
+                if let laError = error as? LAError {
+                    switch laError.code {
+                    case .biometryNotEnrolled:
+                        completion(.failure(KeychainError.biometricNotEnrolled))
+                    case .passcodeNotSet:
+                        completion(.failure(KeychainError.passcodeNotSet))
+                    case .biometryNotAvailable:
+                        completion(.failure(KeychainError.biometricNotAvailable))
+                    default:
+                        completion(.failure(error ?? KeychainError.biometricFailed))
+                    }
+                } else {
+                    completion(.failure(error ?? KeychainError.biometricFailed))
+                }
                 return
             }
 
@@ -175,6 +192,9 @@ enum KeychainError: LocalizedError {
     case algorithmNotSupported
     case invalidData
     case biometricFailed
+    case biometricNotEnrolled
+    case passcodeNotSet
+    case biometricNotAvailable
 
     var errorDescription: String? {
         switch self {
@@ -184,6 +204,9 @@ enum KeychainError: LocalizedError {
         case .algorithmNotSupported: return "Algorithm not supported"
         case .invalidData: return "Invalid data to sign"
         case .biometricFailed: return "Biometric authentication failed"
+        case .biometricNotEnrolled: return "No Face ID or Touch ID set up on this device"
+        case .passcodeNotSet: return "No passcode set up on this device"
+        case .biometricNotAvailable: return "Biometric authentication is not available on this device"
         }
     }
 }

@@ -11,6 +11,19 @@ class EnrollDeviceScreen extends StatefulWidget {
 }
 
 class _EnrollDeviceScreenState extends State<EnrollDeviceScreen> {
+  // Maps a specific key-generation failure code to a message that tells
+  // the student what to actually do about it, instead of a generic error.
+  String _friendlyKeygenMessage(String code) {
+    switch (code) {
+      case 'NO_LOCK_SCREEN':
+        return "Your phone doesn't have a lock screen set up. "
+            "Go to Settings > Security, Enroll fingerprint, then come back and try again.";
+      default:
+        return 'Could not set up security keys on this device. '
+            'Please try again.';
+    }
+  }
+
   bool _isLoading = false;
   bool _isSuccess = false;
   String _errorMessage = '';
@@ -98,8 +111,17 @@ void initState() {
         _statusMessage = 'Generating security keys...';
       });
 
-      // Step 3: Generate real RSA key pair in Android Keystore
-      final publicKey = await CryptoService.generateKeyPair();
+            // Step 3: Generate real RSA key pair in the device's secure key store
+      String? publicKey;
+      try {
+        publicKey = await CryptoService.generateKeyPair();
+      } on CryptoAuthException catch (e) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = _friendlyKeygenMessage(e.code);
+        });
+        return;
+      }
       if (publicKey == null) {
         setState(() {
           _isLoading = false;

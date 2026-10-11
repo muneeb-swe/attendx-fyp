@@ -68,9 +68,23 @@ import UIKit
                         switch signResult {
                         case .success(let signature):
                             result(signature)
-                        case .failure(let error):
+                                                case .failure(let error):
+                            // Map the specific Keychain/biometric error back
+                            // to a code the Dart side can show a tailored
+                            // message for, instead of a generic one.
+                            var code = "SIGN_ERROR"
+                            if let keychainError = error as? KeychainError {
+                                switch keychainError {
+                                case .biometricNotEnrolled:
+                                    code = "NO_BIOMETRIC_ENROLLED"
+                                case .passcodeNotSet, .biometricNotAvailable:
+                                    code = "NO_LOCK_SCREEN"
+                                default:
+                                    break
+                                }
+                            }
                             result(FlutterError(
-                                code: "SIGN_ERROR",
+                                code: code,
                                 message: error.localizedDescription,
                                 details: nil
                             ))
