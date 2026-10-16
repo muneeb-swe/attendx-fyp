@@ -282,3 +282,69 @@ class TokenRefreshViewTests(TestCase):
             'refresh': self.access,
         })
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class LogoutViewTests(TestCase):
+    """
+    Logging out must revoke the refresh token on the server, not just delete
+    it from the phone, so a copy taken earlier stops working.
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='student1', password='pass123', role='student',
+        )
+        Student.objects.create(
+            user=self.user, roll_number='CS-101', department='CS', batch='2026'
+        )
+        token = RefreshToken.for_user(self.user)
+        self.refresh = str(token)
+        self.access = str(token.access_token)
+
+    def test_logout_revokes_refresh_token(self):
+        # Works before logout...
+        before = self.client.post('/api/auth/token/refresh/', {'refresh': self.refresh})
+        self.assertEqual(before.status_code, status.HTTP_200_OK)
+
+        response = self.client.post('/api/auth/logout/', {'refresh': self.refresh})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # ...and is rejected afterwards.
+        after = self.client.post('/api/auth/token/refresh/', {'refresh': self.refresh})
+        self.assertEqual(after.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_logout_needs_no_access_token(self):
+        # The access token may already have expired when the user logs out.
+        self.client.credentials()  # no Authorization header
+        response = self.client.post('/api/auth/logout/', {'refresh': self.refresh})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        after = self.client.post('/api/auth/token/refresh/', {'refresh': self.refresh})
+        self.assertEqual(after.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_logout_only_revokes_the_token_it_was_given(self):
+        other = str(RefreshToken.for_user(self.user))
+        self.client.post('/api/auth/logout/', {'refresh': self.refresh})
+        still_works = self.client.post('/api/auth/token/refresh/', {'refresh': other})
+        self.assertEqual(still_works.status_code, status.HTTP_200_OK)
+
+    def test_logout_is_safe_to_repeat_and_ignores_bad_input(self):
+        for body in [
+            {'refresh': self.refresh},
+            {'refresh': self.refresh},      # already revoked
+            {'refresh': 'not-a-real-token'},
+            {'refresh': self.access},       # an access token is not a refresh token
+            {'refresh': ''},
+            {},
+        ]:
+            with self.subTest(body=body):
+                response = self.client.post('/api/auth/logout/', body)
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_already_issued_access_token_still_works_until_it_expires(self):
+        # Only refresh tokens can be revoked. This pins down the known limit
+        # so a future change to it is a conscious one.
+        self.client.post('/api/auth/logout/', {'refresh': self.refresh})
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access}')
+        response = self.client.get('/api/auth/verify/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

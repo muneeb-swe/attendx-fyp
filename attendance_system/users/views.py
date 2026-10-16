@@ -1,9 +1,10 @@
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 from cryptography.hazmat.primitives.serialization import load_pem_public_key, load_der_public_key
 import base64
 
@@ -72,6 +73,31 @@ class LoginView(APIView):
                 pass
 
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+class LogoutView(APIView):
+    """
+    Revoke the caller's refresh token so it stops working after logout.
+
+    Only the refresh token is needed, not a valid access token, because the
+    access token may already have expired by the time the user logs out.
+    A missing, malformed, expired or already-revoked token still gets a 200:
+    the outcome the client cares about (this token no longer works) is the
+    same, and it keeps logout safe to repeat. Access tokens that were already
+    issued stay valid until they expire (up to 2 hours); only the refresh
+    token can be revoked this way.
+    """
+    permission_classes = [AllowAny]
+    throttle_scope = 'logout'
+
+    def post(self, request):
+        refresh = request.data.get('refresh')
+        if refresh and isinstance(refresh, str):
+            try:
+                RefreshToken(refresh).blacklist()
+            except TokenError:
+                pass
+        return Response({'message': 'Logged out'}, status=status.HTTP_200_OK)
 
 
 class DeviceEnrollView(APIView):

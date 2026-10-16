@@ -62,8 +62,11 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
         });
         _startTimers();
       } else {
+        final data = result['data'];
         setState(() {
-          _errorMessage = 'Failed to generate QR';
+          _errorMessage = (data is Map && data['error'] is String)
+              ? data['error']
+              : 'Failed to generate QR';
           _isLoading = false;
         });
       }
@@ -91,10 +94,23 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
   }
 
   void _connectWebSocket() async {
-    final token = await ApiService.getValidToken();
-    final wsUrl = 'wss://attendx-fyp-production.up.railway.app/ws/attendance/session/$_sessionId/?token=$token';
-    
-    _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
+    final WebSocketChannel channel;
+    try {
+      channel = await ApiService.connectAuthenticatedSocket(
+        '/ws/attendance/session/$_sessionId/',
+      );
+    } catch (e) {
+      // Could not connect: retry shortly, same as a dropped connection.
+      if (mounted && _sessionStarted) {
+        Future.delayed(const Duration(seconds: 3), _connectWebSocket);
+      }
+      return;
+    }
+    if (!mounted) {
+      channel.sink.close();
+      return;
+    }
+    _wsChannel = channel;
     _wsChannel!.stream.listen(
       (message) {
         final data = jsonDecode(message);

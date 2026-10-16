@@ -1,12 +1,15 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 class ApiService {
   // Change this to your Django server IP
   //static const String baseUrl = 'http://MuneebOfficial-52165.portmap.host:52165/api';
   //static const String baseUrl = 'http://localhost:8000/api';
   static const String baseUrl = 'https://attendx-fyp-production.up.railway.app/api';
+  // Must point at the same server as baseUrl.
+  static const String wsBaseUrl = 'wss://attendx-fyp-production.up.railway.app';
   static const FlutterSecureStorage storage = FlutterSecureStorage();
 
   // Save token after login
@@ -24,6 +27,45 @@ class ApiService {
   static Future<void> deleteToken() async {
     await storage.delete(key: 'access_token');
     await storage.delete(key: 'refresh_token');
+  }
+
+  // Opens a WebSocket and authenticates it with a first message, so the
+  // access token is never part of the URL (URLs end up in server and proxy
+  // logs). The server closes the socket if it does not receive this message
+  // within a few seconds. Throws if the connection cannot be opened.
+  static Future<WebSocketChannel> connectAuthenticatedSocket(String path) async {
+    final token = await getValidToken();
+    final channel = WebSocketChannel.connect(Uri.parse('$wsBaseUrl$path'));
+    try {
+      await channel.ready;
+    } catch (e) {
+      channel.sink.close();
+      rethrow;
+    }
+    channel.sink.add(jsonEncode({'type': 'auth', 'token': token}));
+    return channel;
+  }
+
+  // Log out: revoke the refresh token on the server, then clear it locally.
+  // Best effort. If the request fails (offline, server down) the user is
+  // still logged out on this phone, but the refresh token stays valid on
+  // the server until it expires.
+  static Future<void> logout() async {
+    try {
+      final refreshToken = await storage.read(key: 'refresh_token');
+      if (refreshToken != null) {
+        await http
+            .post(
+              Uri.parse('$baseUrl/auth/logout/'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'refresh': refreshToken}),
+            )
+            .timeout(const Duration(seconds: 5));
+      }
+    } catch (e) {
+      // Ignore: local logout below must still happen.
+    }
+    await deleteToken();
   }
 
   // True if the JWT has expired, or will within [skewSeconds].

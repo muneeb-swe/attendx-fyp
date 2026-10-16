@@ -54,7 +54,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   }
 
   Future<void> _logout() async {
-    await ApiService.deleteToken();
+    await ApiService.logout();
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     if (!mounted) return;

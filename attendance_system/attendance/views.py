@@ -20,6 +20,32 @@ from asgiref.sync import async_to_sync
 from django.db import connection
 from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
 
+MAX_EXPECTED_COUNT = 10000
+EXPECTED_COUNT_ERROR = (
+    f'Expected student count must be a whole number from 1 to {MAX_EXPECTED_COUNT}.'
+)
+
+
+def parse_expected_count(raw):
+    """
+    Validate the optional expected_count sent when a teacher starts a session.
+
+    Returns (value, error). value is None when no limit was given.
+    A limit below 1 would make every scan fail with "Attendance limit has
+    been reached", so it is rejected here instead of being stored.
+    """
+    if raw is None or raw == '':
+        return None, None
+    if isinstance(raw, bool) or not isinstance(raw, (int, str)):
+        return None, EXPECTED_COUNT_ERROR
+    try:
+        value = int(raw)
+    except ValueError:
+        return None, EXPECTED_COUNT_ERROR
+    if value < 1 or value > MAX_EXPECTED_COUNT:
+        return None, EXPECTED_COUNT_ERROR
+    return value, None
+
 
 scan_signer = TimestampSigner(salt='attendx.scan-ticket')
 SCAN_TOKEN_MAX_AGE_SECONDS = 180
@@ -98,6 +124,17 @@ class GenerateQRView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # Validate expected_count before anything is deleted, so a bad
+        # request does not discard the teacher's previous session.
+        expected_count, count_error = parse_expected_count(
+            request.data.get('expected_count')
+        )
+        if count_error:
+            return Response(
+                {'error': count_error},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         # Discard any unsubmitted sessions for this teacher
         stale_sessions = Session.objects.filter(
             teacher=teacher,
@@ -110,11 +147,6 @@ class GenerateQRView(APIView):
         # Generate token — 5 seconds expiry
         qr_token = str(uuid.uuid4())
         expires_at = timezone.now() + timedelta(seconds=5)
-
-        expected_count = request.data.get('expected_count')
-
-        if expected_count is not None:
-            expected_count = int(expected_count)
 
         # Create session
         session = Session.objects.create(

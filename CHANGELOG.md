@@ -4,6 +4,16 @@ All notable changes to AttendX are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates reflect actual commit history.
 
+## [2026-10-16]
+
+### Added
+- `POST /api/auth/logout/` revokes the caller's refresh token using SimpleJWT's token blacklist (`rest_framework_simplejwt.token_blacklist` added to `INSTALLED_APPS`; run `python manage.py migrate` before deploying). Previously logging out only deleted the tokens from the phone, so a refresh token copied earlier stayed valid on the server for its full 30 days. The app now calls this endpoint on logout. Access tokens already issued still work until they expire (up to 2 hours); only refresh tokens can be revoked.
+- WebSockets now authenticate with a first message (`{"type": "auth", "token": ...}`) instead of a `?token=` query string, so the access token no longer appears in the connection URL. A socket joins no group, and receives nothing, until it has authenticated, and it is closed (code 4401) if it does not authenticate within 5 seconds. The token in the URL is no longer accepted, so the backend and the app must be updated together.
+- 20 new tests (109 in total): `expected_count` validation, logout, and the WebSocket handshake (`attendance/test_consumers.py`).
+
+### Fixed
+- `expected_count` was converted with a bare `int()`: a non-numeric value returned a 500, and `0` or a negative number was accepted, which made every scan in that session fail with "Attendance limit has been reached". It is now validated (a whole number from 1 to 10000, or omitted for no limit) and a bad value returns a 400 with a readable message, which the teacher screen now displays. The check runs before the teacher's previous unsubmitted session is discarded, so a rejected request no longer deletes it.
+
 ## [2026-08-23]
 
 ### Added

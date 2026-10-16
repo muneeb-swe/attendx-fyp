@@ -67,6 +67,7 @@ Base path: `/api/`
 | Endpoint | Method | Description |
 |---|---|---|
 | `login/` | POST | Authenticate, returns JWT pair |
+| `logout/` | POST | Revoke a refresh token (body: `refresh`); needs no access token |
 | `device/enroll/` | POST | Register (or re-register) a device's public key |
 | `device/status/` | POST | Check enrollment status / mismatch for this device |
 | `verify/` | GET | Validate an access token |
@@ -112,7 +113,7 @@ DEBUG=True SECRET_KEY="any-value-for-testing" python manage.py test \
   --settings=attendance_system.test_local_settings
 ```
 
-89 tests across `users/`, `attendance/`, and `dashboard/` — the `attendance` suite runs the full generate-QR → scan → sign → mark flow with real RSA signing, not mocked.
+109 tests across `users/`, `attendance/`, and `dashboard/` — the `attendance` suite runs the full generate-QR → scan → sign → mark flow with real RSA signing, not mocked.
 
 ### Mobile app
 

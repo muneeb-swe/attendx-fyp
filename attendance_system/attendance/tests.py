@@ -135,6 +135,52 @@ class GenerateQRViewTests(AttendanceTestBase):
         self.assertFalse(Session.objects.filter(id=first['session_id']).exists())
         self.assertTrue(Session.objects.filter(id=second['session_id']).exists())
 
+    def test_valid_expected_count_is_stored(self):
+        for sent, stored in [(30, 30), ('30', 30), (1, 1), (10000, 10000)]:
+            with self.subTest(sent=sent):
+                data = self.start_session_as_teacher(expected_count=sent)
+                session = Session.objects.get(id=data['session_id'])
+                self.assertEqual(session.expected_count, stored)
+
+    def test_missing_or_blank_expected_count_means_no_limit(self):
+        data = self.start_session_as_teacher()
+        self.assertIsNone(Session.objects.get(id=data['session_id']).expected_count)
+
+        self.client.force_authenticate(user=self.teacher_user)
+        response = self.client.post(
+            '/api/attendance/generate-qr/',
+            {'class_id': self.class_obj.id, 'expected_count': ''},
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(Session.objects.get(id=response.data['session_id']).expected_count)
+
+    def test_invalid_expected_count_rejected_with_400(self):
+        # 0 and negatives would make every scan fail with "limit reached".
+        # Non-numbers used to crash the view with a 500.
+        self.client.force_authenticate(user=self.teacher_user)
+        for bad in [0, -5, 'abc', '3.5', 10001, True, 2.5, [1], {'n': 1}]:
+            with self.subTest(expected_count=bad):
+                response = self.client.post(
+                    '/api/attendance/generate-qr/',
+                    {'class_id': self.class_obj.id, 'expected_count': bad},
+                    format='json',
+                )
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn('error', response.data)
+
+    def test_invalid_expected_count_does_not_discard_previous_session(self):
+        first = self.start_session_as_teacher()
+
+        self.client.force_authenticate(user=self.teacher_user)
+        response = self.client.post(
+            '/api/attendance/generate-qr/',
+            {'class_id': self.class_obj.id, 'expected_count': 0},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # The teacher's earlier unsubmitted session must survive a bad request.
+        self.assertTrue(Session.objects.filter(id=first['session_id']).exists())
+
 
 class RefreshQRViewTests(AttendanceTestBase):
     def test_teacher_can_rotate_token(self):
