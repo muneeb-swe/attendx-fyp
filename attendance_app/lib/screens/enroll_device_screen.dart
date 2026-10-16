@@ -91,7 +91,7 @@ void initState() {
         return;
       }
 
-      if (deviceStatus == 'enrolled') {
+      if (deviceStatus == 'enrolled' && await CryptoService.hasKeys()) {
         // This exact device is already this student's registered
         // device — nothing to do, no need to re-generate keys or
         // call enroll again.

@@ -269,8 +269,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       subtitle: 'Mark your attendance',
                       color: const Color(0xFF00C896),
                       onTap: _deviceStatus == 'enrolled'
-                          ? () =>
-                              Navigator.pushNamed(context, '/scan_qr')
+                          ? () async {
+                            await Navigator.pushNamed(context, '/scan_qr');
+                            _checkDeviceStatus();
+                          }         
                           : () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -310,7 +312,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     subtitle: _isDeviceMismatch
                         ? 'Contact admin to reset your device'
                         : (!_keystoreKeyExists && _deviceStatus == 'enrolled')
-                          ? 'Reinstalled app? Re-register your device'
+                          ? 'Security key missing or changed. Re-register your device'
                           : _deviceStatus == 'enrolled'
                             ? 'Your device is registered'
                             : 'Register your phone for attendance',

@@ -2,6 +2,8 @@ package com.example.attendance_app
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.security.keystore.KeyPermanentlyInvalidatedException
+import java.security.UnrecoverableKeyException
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.Signature
@@ -54,7 +56,15 @@ object KeystoreHelper {
     fun hasKey(): Boolean {
         val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER)
         keyStore.load(null)
-        return keyStore.containsAlias(KEY_ALIAS)
+        if (!keyStore.containsAlias(KEY_ALIAS)) return false
+        return try {
+            initSignature()   // no biometric prompt is shown just to init
+            true
+        } catch (e: KeyPermanentlyInvalidatedException) {
+            false
+        } catch (e: UnrecoverableKeyException) {
+            false
+        }
     }
 
     // Returns initialized Signature object for use with CryptoObject

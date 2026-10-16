@@ -10,6 +10,7 @@ import io.flutter.plugin.common.MethodChannel
 import java.security.Signature
 import java.security.InvalidAlgorithmParameterException
 import android.provider.Settings
+import android.security.keystore.KeyPermanentlyInvalidatedException
 
 class MainActivity : FlutterFragmentActivity() {
 
@@ -172,7 +173,9 @@ class MainActivity : FlutterFragmentActivity() {
                             promptInfo,
                             BiometricPrompt.CryptoObject(signature)
                         )
-
+                        
+                    } catch (e: KeyPermanentlyInvalidatedException) {
+                        result.error("KEY_INVALIDATED", "Key invalidated", null)
                     } catch (e: Exception) {
                         result.error("SIGN_ERROR", e.message, null)
                     }

@@ -94,7 +94,7 @@ class CryptoService {
       );
       return signature;
     } on PlatformException catch (e) {
-      if (e.code == 'NO_BIOMETRIC_ENROLLED' || e.code == 'NO_LOCK_SCREEN') {
+      if (e.code == 'NO_BIOMETRIC_ENROLLED' || e.code == 'NO_LOCK_SCREEN' || e.code == 'KEY_INVALIDATED') {
         throw CryptoAuthException(
           e.code,
           e.message ?? 'Authentication not available on this device',

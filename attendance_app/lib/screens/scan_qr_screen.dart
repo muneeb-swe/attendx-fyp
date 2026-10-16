@@ -23,10 +23,9 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
         return "Your phone doesn't have a lock screen set up. "
             "Go to Settings > Security, set one up, then try scanning again.";
       case 'KEY_INVALIDATED':
-        return "This device's security key is no longer valid, usually "
-            "because the fingerprint or lock screen settings changed since "
-            "it was enrolled. Ask your admin to reset this device's "
-            "enrollment, then enroll it again.";
+        return "Your fingerprint or lock screen settings changed, so this "
+            "device's security key is no longer valid. Go back to the home "
+            "screen and tap Re-enroll Device.";
       default:
         return 'Authentication failed. Please try again.';
     }
