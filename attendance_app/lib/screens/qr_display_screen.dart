@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 class QRDisplayScreen extends StatefulWidget {
   const QRDisplayScreen({super.key});
@@ -23,6 +25,7 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
   Timer? _countdownTimer;
   int _totalPresent = 0;
   WebSocketChannel? _wsChannel;
+  bool _isFullScreen = false;
 
   @override
   void didChangeDependencies() {
@@ -140,6 +143,7 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
   }
 
   void _startTimers() {
+    WakelockPlus.enable();
     _startCountdownTimer();
     _connectWebSocket();
   }
@@ -171,6 +175,7 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
 
 
   Future<void> _stopSession({bool automatic = false}) async {
+    if (_isFullScreen) _exitFullScreen();
     if (!automatic) {
       final confirm = await showDialog<bool>(
       context: context,
@@ -238,14 +243,100 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
     }
   }
 
+  void _enterFullScreen() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    setState(() => _isFullScreen = true);
+  }
+
+  void _exitFullScreen() {
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
+    if (mounted) setState(() => _isFullScreen = false);
+  }
+
+  // Full-screen view: the QR code as large as the screen allows, on a white
+  // background, with the live count on top and the countdown along the bottom.
+  // Tap anywhere (or press back) to leave it.
+  Widget _buildFullScreen() {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _exitFullScreen,
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _classInfo?['expected_count'] != null
+                          ? '$_totalPresent / ${_classInfo!['expected_count']} Present'
+                          : '$_totalPresent Present',
+                      style: const TextStyle(
+                        color: Color(0xFF0A0A0F),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Text(
+                      'Tap to exit',
+                      style: TextStyle(color: Color(0xFF8A8A9A), fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: Image.memory(
+                      base64Decode(
+                        _qrImage.replaceFirst('data:image/png;base64,', ''),
+                      ),
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.none,
+                      gaplessPlayback: true,
+                    ),
+                  ),
+                ),
+              ),
+              LinearProgressIndicator(
+                value: _countdown / 5,
+                minHeight: 8,
+                backgroundColor: const Color(0xFFE0DDD5),
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(Color(0xFF00C896)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
+    WakelockPlus.disable();
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
     _countdownTimer?.cancel();
     _wsChannel?.sink.close();
     super.dispose();
   }
 
 Future<bool> _onWillPop() async {
+    if (_isFullScreen) {
+    _exitFullScreen();
+    return false;
+  }
   if (!_sessionStarted) return true;
 
   final confirm = await showDialog<bool>(
@@ -281,6 +372,12 @@ Future<bool> _onWillPop() async {
 
   @override
   Widget build(BuildContext context) {
+    if (_isFullScreen && _qrImage.isNotEmpty) {
+      return WillPopScope(
+        onWillPop: _onWillPop,
+        child: _buildFullScreen(),
+      );
+    }
     return WillPopScope(
     onWillPop: _onWillPop,
     child: Scaffold(
@@ -303,7 +400,13 @@ Future<bool> _onWillPop() async {
           ),
         ),
         actions: [
-          if (_sessionStarted)
+            if (_sessionStarted && _qrImage.isNotEmpty)
+            IconButton(
+              tooltip: 'Full screen',
+              icon: const Icon(Icons.fullscreen, color: Color(0xFF0A0A0F)),
+              onPressed: _enterFullScreen,
+            ),
+            if (_sessionStarted)
             Padding(
               padding: const EdgeInsets.only(right: 16),
               child: Center(
