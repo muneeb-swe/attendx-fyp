@@ -256,64 +256,97 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
     if (mounted) setState(() => _isFullScreen = false);
   }
 
-  // Full-screen view: the QR code as large as the screen allows, on a white
-  // background, with the live count on top and the countdown along the bottom.
-  // Tap anywhere (or press back) to leave it.
+  // Full-screen view: the QR code fills the full height of the screen (or the
+  // full width on a portrait phone), never larger than the screen. The count
+  // and countdown go in the spare space beside or above/below the code, so
+  // nothing overlaps it. Tap anywhere (or press back) to leave.
   Widget _buildFullScreen() {
+    final presentText = _classInfo?['expected_count'] != null
+        ? '$_totalPresent / ${_classInfo!['expected_count']} Present'
+        : '$_totalPresent Present';
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: _exitFullScreen,
         child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _classInfo?['expected_count'] != null
-                          ? '$_totalPresent / ${_classInfo!['expected_count']} Present'
-                          : '$_totalPresent Present',
-                      style: const TextStyle(
-                        color: Color(0xFF0A0A0F),
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const Text(
-                      'Tap to exit',
-                      style: TextStyle(color: Color(0xFF8A8A9A), fontSize: 14),
-                    ),
-                  ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final landscape = constraints.maxWidth >= constraints.maxHeight;
+              final side =
+                  landscape ? constraints.maxHeight : constraints.maxWidth;
+              final spare = landscape
+                  ? (constraints.maxWidth - side) / 2
+                  : (constraints.maxHeight - side) / 2;
+              // Only show the side panels when there is room for them.
+              final showPanels = spare >= 110;
+
+              final qr = SizedBox(
+                width: side,
+                height: side,
+                child: Image.memory(
+                  base64Decode(
+                    _qrImage.replaceFirst('data:image/png;base64,', ''),
+                  ),
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.none,
+                  gaplessPlayback: true,
                 ),
-              ),
-              Expanded(
-                child: Center(
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: Image.memory(
-                      base64Decode(
-                        _qrImage.replaceFirst('data:image/png;base64,', ''),
-                      ),
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.none,
-                      gaplessPlayback: true,
-                    ),
+              );
+
+              Widget panel(List<Widget> children) => Expanded(
+                    child: showPanels
+                        ? Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Center(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: children,
+                                ),
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  );
+
+              final countPanel = panel([
+                Text(
+                  presentText,
+                  style: const TextStyle(
+                    color: Color(0xFF0A0A0F),
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
-              LinearProgressIndicator(
-                value: _countdown / 5,
-                minHeight: 8,
-                backgroundColor: const Color(0xFFE0DDD5),
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(Color(0xFF00C896)),
-              ),
-            ],
+              ]);
+
+              final timerPanel = panel([
+                Text(
+                  '$_countdown s',
+                  style: const TextStyle(
+                    color: Color(0xFF00C896),
+                    fontSize: 48,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Text(
+                  'until refresh',
+                  style: TextStyle(color: Color(0xFF8A8A9A), fontSize: 16),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Tap to exit',
+                  style: TextStyle(color: Color(0xFF8A8A9A), fontSize: 16),
+                ),
+              ]);
+
+              return landscape
+                  ? Row(children: [countPanel, qr, timerPanel])
+                  : Column(children: [countPanel, qr, timerPanel]);
+            },
           ),
         ),
       ),
