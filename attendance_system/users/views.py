@@ -84,7 +84,7 @@ class LogoutView(APIView):
     A missing, malformed, expired or already-revoked token still gets a 200:
     the outcome the client cares about (this token no longer works) is the
     same, and it keeps logout safe to repeat. Access tokens that were already
-    issued stay valid until they expire (up to 2 hours); only the refresh
+    issued stay valid until they expire (up to 30 minutes); only the refresh
     token can be revoked this way.
     """
     permission_classes = [AllowAny]

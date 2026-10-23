@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [2026-10-16]
 
 ### Added
-- `POST /api/auth/logout/` revokes the caller's refresh token using SimpleJWT's token blacklist (`rest_framework_simplejwt.token_blacklist` added to `INSTALLED_APPS`; run `python manage.py migrate` before deploying). Previously logging out only deleted the tokens from the phone, so a refresh token copied earlier stayed valid on the server for its full 30 days. The app now calls this endpoint on logout. Access tokens already issued still work until they expire (up to 2 hours); only refresh tokens can be revoked.
+- `POST /api/auth/logout/` revokes the caller's refresh token using SimpleJWT's token blacklist (`rest_framework_simplejwt.token_blacklist` added to `INSTALLED_APPS`; run `python manage.py migrate` before deploying). Previously logging out only deleted the tokens from the phone, so a refresh token copied earlier stayed valid on the server for its full 30 days. The app now calls this endpoint on logout. Access tokens already issued still work until they expire (up to 30 minutes); only refresh tokens can be revoked.
 - WebSockets now authenticate with a first message (`{"type": "auth", "token": ...}`) instead of a `?token=` query string, so the access token no longer appears in the connection URL. A socket joins no group, and receives nothing, until it has authenticated, and it is closed (code 4401) if it does not authenticate within 5 seconds. The token in the URL is no longer accepted, so the backend and the app must be updated together.
 - 20 new tests (109 in total): `expected_count` validation, logout, and the WebSocket handshake (`attendance/test_consumers.py`).
 
